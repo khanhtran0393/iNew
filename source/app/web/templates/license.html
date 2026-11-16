@@ -1,0 +1,88 @@
+{% extends "layout.html" %}
+
+{% block title %}Bản Quyền — iNew{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-5">
+    <div>
+        <h1 class="text-2xl font-bold tracking-tight text-[#1C1C1E]">Kích hoạt iNew</h1>
+        <p class="text-sm text-[#8A8A8E] mt-0.5">Phiên bản {{ app_version }}</p>
+    </div>
+
+    {% set q = request.query_params %}
+    {% if q.get('ok') %}<div class="p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-sm text-emerald-700">✓ {{ q.get('ok') }}</div>{% endif %}
+    {% if q.get('err') %}<div class="p-3 rounded-xl border border-rose-200 bg-rose-50 text-sm text-rose-700">✗ {{ 'Chỉ tài khoản Quản trị mới kích hoạt được.' if q.get('err') == 'admin' else q.get('err') }}</div>{% endif %}
+
+    <div class="bg-white border border-[#ECECEE] p-5 rounded-2xl">
+        {% if state.licensed %}
+        <div class="flex items-center gap-2 text-emerald-700 font-semibold"><span class="text-xl">🟢</span> Máy này đã được kích hoạt</div>
+        <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
+            <div class="p-3 rounded-xl bg-[#F2F2F7] border border-[#ECECEE]"><span class="text-[#AEAEB2] block text-xs">Kích hoạt cho</span><span class="text-[#1C1C1E] font-semibold">{{ state.customer or '—' }}</span></div>
+            <div class="p-3 rounded-xl bg-[#F2F2F7] border border-[#ECECEE]"><span class="text-[#AEAEB2] block text-xs">Thời hạn</span><span class="text-[#1C1C1E] font-semibold">{{ ('Đến ' ~ state.expires[8:10] ~ '/' ~ state.expires[5:7] ~ '/' ~ state.expires[:4]) if state.expires else 'Trọn đời' }}</span></div>
+            <div class="p-3 rounded-xl bg-[#F2F2F7] border border-[#ECECEE]"><span class="text-[#AEAEB2] block text-xs">Số kênh tối đa</span><span class="text-[#1C1C1E] font-semibold">{{ state.limits.max_channels or 'Không giới hạn' }}</span></div>
+            <div class="p-3 rounded-xl bg-[#F2F2F7] border border-[#ECECEE]"><span class="text-[#AEAEB2] block text-xs">Số nhân viên tối đa</span><span class="text-[#1C1C1E] font-semibold">{{ state.limits.max_staff or 'Không giới hạn' }}</span></div>
+        </div>
+        {% if state.offline_days_left is not none %}
+        <p class="mt-3 text-xs text-[#AEAEB2]">Còn chạy ngoại tuyến được {{ state.offline_days_left }} ngày nếu mất kết nối máy chủ kích hoạt.</p>
+        {% endif %}
+        {% else %}
+        <div class="flex items-center gap-2 text-rose-700 font-semibold"><span class="text-xl">🔒</span> {{ state.message }}</div>
+        <p class="mt-2 text-sm text-[#8A8A8E]">Hãy kích hoạt để bắt đầu sử dụng iNew. Việc này chỉ làm một lần trên mỗi máy.</p>
+        {% endif %}
+    </div>
+
+    {% if not state.licensed %}
+    <div class="bg-white border border-[#ECECEE] p-5 rounded-2xl space-y-4">
+        <div class="flex items-start gap-3">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 border border-blue-200 text-xl">🎁</span>
+            <div class="text-sm leading-relaxed text-[#3C3C43]">
+                <p class="font-semibold text-[#1C1C1E]">iNew miễn phí cho cộng đồng</p>
+                <p class="mt-1">Để tránh việc phần mềm bị phát tán tràn lan, mỗi máy cần một <b>key kích hoạt riêng</b>. Key được cấp miễn phí và dùng <b>trọn đời</b> trên máy đó.</p>
+            </div>
+        </div>
+
+        <ol class="list-decimal pl-5 space-y-1 text-sm text-[#3C3C43]">
+            <li>Bấm <b>Nhận key miễn phí qua Telegram</b>. Telegram mở bot iNew, mã máy đã được gửi kèm sẵn, bạn chỉ cần bấm <b>Start / Bắt đầu</b>.</li>
+            <li>Tác giả duyệt yêu cầu, bot gửi key cho bạn ngay trong Telegram.</li>
+            <li>Dán key vào ô bên dưới rồi bấm <b>Cài đặt mã bản quyền</b>.</li>
+        </ol>
+
+        <a href="https://t.me/{{ key_bot }}?start={{ fingerprint }}" target="_blank" rel="noopener"
+           class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[#229ED9] hover:opacity-90 text-white font-semibold text-sm shadow-sm">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 4L3 11l6 2 2 6 3-4 5 4z"/></svg>
+            Nhận key miễn phí qua Telegram
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="bg-white border border-[#ECECEE] p-5 rounded-2xl space-y-4">
+        <div>
+            <div class="flex items-center justify-between gap-2">
+                <span class="text-xs text-[#8A8A8E]">Mã máy của bạn{% if not state.licensed %} (hoặc copy và gửi cho bot <b>@{{ key_bot }}</b>){% endif %}:</span>
+                <button type="button" onclick="navigator.clipboard && navigator.clipboard.writeText('{{ fingerprint }}').then(() => { this.textContent = 'Đã chép ✓'; setTimeout(() => this.textContent = 'Sao chép', 1500); })" class="text-xs px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-semibold">Sao chép</button>
+            </div>
+            <div class="mt-1.5 font-mono text-sm text-cyan-700 break-all select-all p-2 rounded-lg bg-[#F2F2F7] border border-[#ECECEE]">{{ fingerprint }}</div>
+        </div>
+
+        {% if has_server %}
+        <form method="POST" action="/license/activate" class="space-y-2">
+            <label class="block text-xs font-semibold text-[#3C3C43]">Kích hoạt bằng mã kích hoạt (cần mạng)</label>
+            <div class="flex gap-2">
+                <input name="activation_code" required placeholder="Nhập mã kích hoạt tác giả gửi"
+                    class="flex-1 px-3 py-2 rounded-xl bg-[#F2F2F7] border border-[#D9D9DE] text-sm text-[#1C1C1E] font-mono">
+                <button class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold">Kích hoạt</button>
+            </div>
+        </form>
+        <div class="text-center text-xs text-[#AEAEB2]">hoặc</div>
+        {% endif %}
+
+        <form method="POST" action="/license/install" class="space-y-2">
+            <label class="block text-xs font-semibold text-[#3C3C43]">Dán mã bản quyền (key) bot gửi cho bạn</label>
+            <textarea name="token" required rows="3" placeholder="Dán chuỗi key vào đây"
+                class="w-full px-3 py-2 rounded-xl bg-[#F2F2F7] border border-[#D9D9DE] text-xs text-[#1C1C1E] font-mono custom-scroll"></textarea>
+            <button class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold">Cài đặt mã bản quyền</button>
+        </form>
+        <p class="text-[11px] text-[#AEAEB2]">Chỉ tài khoản Quản trị mới kích hoạt được. Cài lại iNew trên cùng máy mà vẫn giữ thư mục dữ liệu thì mã máy không đổi.</p>
+    </div>
+</div>
+{% endblock %}

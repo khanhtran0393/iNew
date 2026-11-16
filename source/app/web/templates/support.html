@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+
+{% block title %}Hỗ trợ — iNew{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-5">
+    <div>
+        <h1 class="text-2xl font-bold tracking-tight text-[#1C1C1E]">Hỗ trợ</h1>
+        <p class="text-sm text-[#8A8A8E] mt-0.5">Gặp lỗi hoặc cần giúp đỡ? Gửi cho tác giả theo hai bước dưới đây.</p>
+    </div>
+
+    <section class="bg-white border border-[#ECECEE] rounded-2xl p-5 space-y-4">
+        <div class="flex items-start gap-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white font-bold">1</span>
+            <div class="flex-1 space-y-2">
+                <h2 class="text-base font-bold text-[#1C1C1E]">Tải nhật ký lỗi</h2>
+                <p class="text-sm text-[#3C3C43] leading-relaxed">File .zip gồm nhật ký hoạt động gần nhất và thông tin phiên bản, hệ điều hành. Mọi mật khẩu, token và key kích hoạt đều đã được ẩn.</p>
+                {% if current_user.role and current_user.role.slug == 'admin' %}
+                <a href="/support/diagnostics.zip" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold">⬇ Tải nhật ký lỗi</a>
+                {% else %}
+                <p class="text-sm text-amber-700">Chỉ Quản trị viên tải được nhật ký lỗi. Bạn có thể bỏ qua bước này và mô tả lỗi ở bước 2.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="flex items-start gap-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white font-bold">2</span>
+            <div class="flex-1 space-y-2">
+                <h2 class="text-base font-bold text-[#1C1C1E]">Gửi lỗi cho tác giả</h2>
+                <p class="text-sm text-[#3C3C43] leading-relaxed">Telegram sẽ mở bot iNew. Gửi file nhật ký vừa tải, kèm vài dòng mô tả: bạn đang làm gì thì gặp lỗi, lỗi hiện ra thế nào (có ảnh chụp màn hình càng tốt). Tác giả sẽ phản hồi bạn ngay trong Telegram.</p>
+                <a href="https://t.me/{{ key_bot }}?start=support" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#229ED9] hover:opacity-90 text-white text-sm font-semibold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 4L3 11l6 2 2 6 3-4 5 4z"/></svg>
+                    Gửi lỗi cho tác giả
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section class="bg-white border border-[#ECECEE] rounded-2xl p-5 text-sm text-[#3C3C43] space-y-2">
+        <h2 class="text-base font-bold text-[#1C1C1E]">Thông tin cần cho tác giả</h2>
+        <p>Phiên bản iNew: <b class="text-[#1C1C1E]">{{ app_version }}</b></p>
+        <p>Nhiều câu hỏi thường gặp đã có lời giải trong <a href="/help#loi" class="text-blue-600 font-semibold">Hướng dẫn sử dụng</a>.</p>
+    </section>
+</div>
+{% endblock %}

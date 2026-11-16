@@ -1,0 +1,1095 @@
+{% extends "layout.html" %}
+
+{% block title %}Biên Tập Bài #{{ post.id }} — iNew{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Breadcrumb & Status Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center space-x-2 text-sm text-[#8A8A8E]">
+            <a href="/feed" class="hover:text-[#1C1C1E] transition">&larr; Quay lại Kho tin</a>
+            <span>/</span>
+            <span class="text-[#1C1C1E] font-semibold">Bài viết #{{ post.id }}</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <!-- Current Status Badge -->
+            <span class="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider
+                {% if post.workflow_status == 'new' %}bg-blue-50 text-blue-700 border border-blue-700
+                {% elif post.workflow_status == 'claimed' %}bg-indigo-50 text-indigo-700 border border-indigo-700
+                {% elif post.workflow_status == 'verifying' %}bg-amber-50 text-amber-700 border border-amber-700
+                {% elif post.workflow_status == 'editing' %}bg-purple-50 text-purple-700 border border-purple-700
+                {% elif post.workflow_status == 'reviewing' %}bg-yellow-50 text-yellow-700 border border-yellow-700
+                {% elif post.workflow_status == 'approved' %}bg-emerald-50 text-emerald-700 border border-emerald-700
+                {% elif post.workflow_status == 'completed' %}bg-emerald-100 text-emerald-700 border border-emerald-600
+                {% elif post.workflow_status in ['skipped', 'archived'] %}bg-[#EFEFF4] text-[#8A8A8E] border border-[#D9D9DE]
+                {% else %}bg-rose-100 text-rose-700 border border-rose-200{% endif %}">
+                Trạng thái: {{ status_labels.get(post.workflow_status, post.workflow_status) }}
+            </span>
+
+            {% if post.assigned_user %}
+            <span class="px-3 py-1 rounded-xl bg-[#EFEFF4] border border-[#D9D9DE] text-xs text-indigo-700">
+                👤 Phụ trách: <b>{{ post.assigned_user.full_name }}</b>
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if flash_msg %}
+    <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-700/60 text-emerald-700 text-sm">✓ {{ flash_msg }}</div>
+    {% endif %}
+    {% if flash_err %}
+    <div class="p-3 rounded-xl bg-rose-50 border border-rose-700/60 text-rose-700 text-sm">⚠️ {{ flash_err }}</div>
+    {% endif %}
+    {% if last_feedback and post.workflow_status in ['editing', 'rejected', 'skipped'] %}
+    <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm">
+        <b>{{ 'Nhận xét của người duyệt' if last_feedback.to_status == 'editing' else ('Lý do bác bỏ' if last_feedback.to_status == 'rejected' else 'Ghi chú bỏ qua') }}</b>
+        ({{ last_feedback.user.full_name if last_feedback.user else 'Hệ thống' }}, {{ last_feedback.created_at.strftime('%H:%M %d/%m') }}):
+        {{ last_feedback.notes }}
+    </div>
+    {% endif %}
+    {% if post.published_url %}
+    <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
+        🏁 Đã đăng lúc {{ post.published_at.strftime('%H:%M %d/%m/%Y') if post.published_at else '' }}:
+        <a href="{{ post.published_url if post.published_url.startswith('http') else '#' }}" target="_blank" rel="noopener" class="underline break-all">{{ post.published_url }}</a>
+    </div>
+    {% endif %}
+
+    <!-- Alert Messages (Deleted or Edited at source) -->
+    {% if post.is_source_deleted %}
+    <div class="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center space-x-2">
+        <svg class="w-5 h-5 flex-shrink-0 text-rose-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        <span><b>Cảnh báo:</b> Bài viết này đã bị kênh nguồn xóa bỏ khỏi Telegram vào lúc {{ post.deleted_at.strftime('%H:%M %d/%m/%Y') if post.deleted_at else '' }}. Cần thận trọng khi kiểm chứng!</span>
+    </div>
+    {% endif %}
+
+    {% if post.is_source_edited %}
+    <div class="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs flex items-center space-x-2">
+        <svg class="w-5 h-5 flex-shrink-0 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <span><b>Thông báo:</b> Nội dung bài viết này đã được kênh nguồn chỉnh sửa lại. Hệ thống đã cập nhật bản mới nhất và lưu vết lịch sử.</span>
+    </div>
+    {% endif %}
+
+    <!-- 2 Column Layout: Left (Original & Media), Right (Editor & AI Copilot) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- LEFT: Source Info & Original Content -->
+        <div class="space-y-6">
+            <!-- Metadata Card -->
+            <div class="glass-panel p-5 rounded-2xl space-y-3">
+                <h2 class="text-base font-semibold text-[#1C1C1E]">Thông Tin Nguồn Tin</h2>
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                        <span class="text-[#8A8A8E]">Kênh:</span>
+                        <div class="font-medium text-[#1C1C1E] mt-0.5">{{ post.source.title if post.source else 'Không rõ' }}</div>
+                    </div>
+                    <div>
+                        <span class="text-[#8A8A8E]">Thời gian thu thập:</span>
+                        <div class="font-medium text-[#1C1C1E] mt-0.5">{{ post.created_at.strftime('%H:%M:%S %d/%m/%Y') }}</div>
+                    </div>
+                    <div>
+                        <span class="text-[#8A8A8E]">{{ 'Link Telegram gốc:' if post.source and post.source.source_type == 'telegram' else 'Link bài gốc:' }}</span>
+                        <div class="mt-0.5">
+                            {% if post.source_url and post.source_url.startswith('http') %}
+                            <a href="{{ post.source_url }}" target="_blank" rel="noopener" class="text-blue-700 hover:underline font-mono text-[11px] truncate block">
+                                {{ post.source_url }} &nearr;
+                            </a>
+                            {% else %}
+                            <span class="text-[#AEAEB2]">Chưa có link</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        <span class="text-[#8A8A8E]">Lọc trùng:</span>
+                        <div class="mt-0.5">
+                            {% if post.status == 'duplicate' %}
+                            <span class="text-rose-700 font-semibold">Trùng lặp ({{ post.dedupe_score }}%)</span>
+                            {% else %}
+                            <span class="text-emerald-700 font-semibold">Duy nhất (Đạt chuẩn)</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if post.source and post.source.source_type in ['rss', 'web'] %}
+            <!-- Full article body (newspapers): the reading view, above the RSS headline + lead -->
+            <div class="glass-panel p-5 rounded-2xl">
+                <div class="flex items-center justify-between mb-2 gap-2">
+                    <h2 class="text-base font-semibold text-[#1C1C1E]">Toàn Văn Bài Báo</h2>
+                    <button type="button" id="btn-fetch-article" onclick="fetchArticle(this)" class="px-2.5 py-1 rounded-lg bg-[#EFEFF4] hover:bg-[#E5E5EA] text-[#1C1C1E] border border-[#D9D9DE] text-[11px]">
+                        {{ '↻ Lấy lại' if post.article_text else '⬇️ Lấy toàn văn' }}
+                    </button>
+                </div>
+                {% if post.article_text %}
+                <article class="p-5 rounded-xl bg-white border border-[#ECECEE] text-[15px] text-[#1C1C1E] leading-7 space-y-3">
+                    {% for para in post.article_text.split('\n') if para.strip() %}<p>{{ para }}</p>{% endfor %}
+                </article>
+                <p class="mt-2 text-[11px] text-[#AEAEB2]">Trích từ <a href="{{ post.source_url }}" target="_blank" rel="noopener" class="underline">trang gốc</a>{% if post.article_fetched_at %} lúc {{ post.article_fetched_at.strftime('%H:%M %d/%m') }} UTC{% endif %}. Nội dung thuộc bản quyền của báo; đăng lại phải xin phép và ghi nguồn.</p>
+                {% elif post.article_status == 'failed' %}
+                <p class="text-xs text-amber-700">Chưa trích được toàn văn (trang chặn truy cập, trang video hoặc cần đăng nhập). Bấm "Lấy toàn văn" để thử lại, hoặc mở <a href="{{ post.source_url }}" target="_blank" rel="noopener" class="underline">link gốc</a> để đọc.</p>
+                {% else %}
+                <p class="text-xs text-[#AEAEB2]">Đang lấy toàn văn bài báo...</p>
+                {% endif %}
+                <p id="article-status" class="mt-1 text-xs"></p>
+            </div>
+            {% endif %}
+
+            <!-- Original Content Box -->
+            <div class="glass-panel p-5 rounded-2xl">
+                <h2 class="text-base font-semibold text-[#1C1C1E] mb-2">{{ 'Tiêu Đề & Tóm Tắt (từ nguồn tin)' if post.source and post.source.source_type in ['rss', 'web'] else 'Văn Bản Gốc' }}</h2>
+                <div class="p-4 rounded-xl bg-white border border-[#ECECEE] text-sm text-[#1C1C1E] leading-relaxed font-sans whitespace-pre-wrap max-h-96 overflow-y-auto custom-scroll">
+                    {{ post.original_text or '[Không có văn bản - Tin chỉ chứa Media]' }}
+                </div>
+            </div>
+
+
+            <!-- Media Attachments -->
+            <div class="glass-panel p-5 rounded-2xl">
+                <h2 class="text-base font-semibold text-[#1C1C1E] mb-3">Tệp Đính Kèm Media ({{ post.media_items | length }})</h2>
+                {% if post.media_items %}
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {% for m in post.media_items %}
+                    <div class="rounded-xl overflow-hidden bg-white border border-[#ECECEE] flex flex-col justify-between p-2">
+                        <div class="text-[10px] text-[#8A8A8E] mb-1 flex items-center justify-between">
+                            <span class="uppercase font-semibold text-blue-700">{{ m.media_type }}</span>
+                            <span>{{ (m.file_size / 1024 / 1024) | round(2) if m.file_size else '0' }} MB</span>
+                        </div>
+                        {% set is_local = m.file_path and m.file_path != 'pending_download' and not m.file_path.startswith('http') %}
+                        {% if m.media_type == 'photo' and is_local %}
+                        <img src="/media/download?path={{ m.file_path | urlencode }}" alt="" loading="lazy" class="my-1 w-full h-28 object-cover rounded-lg">
+                        {% elif m.media_type == 'photo' and m.file_path and m.file_path.startswith('http') %}
+                        <img src="{{ m.file_path }}" alt="" loading="lazy" referrerpolicy="no-referrer" class="my-1 w-full h-28 object-cover rounded-lg opacity-80" title="Ảnh xem trước từ nguồn (chưa lưu về server)">
+                        {% elif m.media_type == 'video' and is_local %}
+                        <video src="/media/download?path={{ m.file_path | urlencode }}" preload="metadata" controls class="my-1 w-full h-28 rounded-lg bg-black"></video>
+                        {% else %}
+                        <div class="my-2 text-center text-xs text-[#AEAEB2] truncate" title="{{ m.file_path }}">
+                            📁 {{ m.file_path.split('/')[-1] if m.file_path else 'media' }}
+                        </div>
+                        {% endif %}
+                        {% if is_local %}
+                        <a href="/media/download?path={{ m.file_path | urlencode }}&download=1"
+                            class="w-full text-center py-1.5 rounded-lg bg-[#EFEFF4] hover:bg-[#E5E5EA] text-blue-700 text-xs font-medium border border-[#D9D9DE] transition">
+                            Tải về máy
+                        </a>
+                        {% elif can_edit %}
+                        <button type="button" onclick="{{ 'downloadFromSource(' ~ m.id ~ ', this)' if (post.source and post.source.source_type == 'telegram') or (m.file_path or '').startswith('http') else 'fetchOriginalMedia()' }}"
+                            class="w-full text-center py-1.5 rounded-lg bg-amber-50 hover:bg-amber-800/40 text-amber-700 text-xs font-medium border border-amber-200 transition">
+                            ⬇️ Tải từ nguồn về server
+                        </button>
+                        {% else %}
+                        <span class="text-[10px] text-center text-amber-500 py-1">Chưa tải</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-xs text-[#AEAEB2]">Bài viết này không có tệp đính kèm.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- RIGHT: Editorial Center & AI Copilot -->
+        <div class="space-y-6">
+            <!-- Workflow Transition Actions -->
+            <div class="glass-panel p-5 rounded-2xl">
+                <h2 class="text-base font-semibold text-[#1C1C1E] mb-3">Thao Tác Quy Trình</h2>
+                {% set st = post.workflow_status %}
+                {% set btn = "px-3.5 py-2 rounded-xl font-medium text-xs transition border" %}
+                {% if not (can_claim or can_skip) %}
+                <p class="text-xs text-[#AEAEB2]">Tài khoản Người xem chỉ được xem bài, không thao tác quy trình.</p>
+                {% else %}
+                <div class="flex flex-wrap gap-2">
+                    {% if st == 'new' and can_claim %}
+                    <form action="/posts/{{ post.id }}/claim" method="POST">
+                        <button type="submit" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-md shadow-blue-500/20 transition">📌 Nhận xử lý</button>
+                    </form>
+                    {% endif %}
+
+                    {% if can_work and st == 'claimed' %}
+                    <form action="/posts/{{ post.id }}/status" method="POST"><input type="hidden" name="status" value="verifying">
+                        <button type="submit" class="{{ btn }} bg-amber-50 hover:bg-amber-800/40 text-amber-700 border-amber-200">🔍 Cần xác minh</button></form>
+                    {% endif %}
+                    {% if can_work and st in ['claimed', 'verifying'] %}
+                    <form action="/posts/{{ post.id }}/status" method="POST"><input type="hidden" name="status" value="editing">
+                        <button type="submit" class="{{ btn }} bg-purple-50 hover:bg-purple-800/40 text-purple-700 border-purple-200">✍️ Bắt đầu biên tập</button></form>
+                    {% endif %}
+                    {% if can_work and st == 'editing' %}
+                    <form action="/posts/{{ post.id }}/status" method="POST"><input type="hidden" name="status" value="reviewing">
+                        <button type="submit" class="{{ btn }} bg-yellow-50 hover:bg-yellow-800/40 text-yellow-700 border-yellow-200">📤 Gửi chờ duyệt</button></form>
+                    {% endif %}
+                    {% if can_work and st in ['claimed', 'verifying', 'editing'] %}
+                    <form action="/posts/{{ post.id }}/status" method="POST" onsubmit="return confirm('Trả bài về hàng chờ cho người khác nhận?');"><input type="hidden" name="status" value="{{ 'new' if st == 'claimed' else 'claimed' }}">
+                        <button type="submit" class="{{ btn }} bg-[#EFEFF4] hover:bg-[#E5E5EA] text-[#3C3C43] border-[#D9D9DE]">↩️ {{ 'Trả bài' if st == 'claimed' else 'Lùi một bước' }}</button></form>
+                    {% endif %}
+                    {% if can_approve and st == 'reviewing' %}
+                    <form action="/posts/{{ post.id }}/status" method="POST"><input type="hidden" name="status" value="approved">
+                        <button type="submit" class="{{ btn }} bg-emerald-50 hover:bg-emerald-800/40 text-emerald-700 border-emerald-200 font-semibold">✅ Phê duyệt</button></form>
+                    {% endif %}
+                    {% if is_admin and st in ['rejected', 'skipped', 'archived'] or (can_assign and st in ['rejected', 'skipped']) %}
+                    <form action="/posts/{{ post.id }}/status" method="POST"><input type="hidden" name="status" value="new">
+                        <button type="submit" class="{{ btn }} bg-blue-50 hover:bg-blue-800/40 text-blue-700 border-blue-200">♻️ Mở lại tin</button></form>
+                    {% endif %}
+                </div>
+
+                {% if can_approve and st == 'reviewing' %}
+                <form action="/posts/{{ post.id }}/status" method="POST" class="mt-3 flex flex-wrap gap-2 items-center">
+                    <input type="hidden" name="status" value="editing">
+                    <input type="text" name="notes" required placeholder="Nhận xét yêu cầu sửa (bắt buộc)" class="flex-1 min-w-[200px] px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-xs text-[#1C1C1E]">
+                    <button type="submit" class="{{ btn }} bg-orange-50 hover:bg-orange-800/40 text-orange-700 border-orange-200">↩️ Trả bài về sửa</button>
+                </form>
+                {% elif st == 'reviewing' %}
+                <p class="text-[11px] text-[#8A8A8E] mt-2">Bài đang chờ Trưởng ban / Admin duyệt.</p>
+                {% endif %}
+
+                {% if can_work and st == 'approved' %}
+                <form action="/posts/{{ post.id }}/status" method="POST" class="mt-3 flex flex-wrap gap-2 items-center">
+                    <input type="hidden" name="status" value="completed">
+                    <input type="url" name="published_url" required placeholder="Link bài đã đăng (https://...)" class="flex-1 min-w-[200px] px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-xs text-[#1C1C1E]">
+                    <button type="submit" class="{{ btn }} bg-emerald-700 hover:bg-emerald-600 text-white border-emerald-600 font-semibold">🏁 Xác nhận đã đăng</button>
+                </form>
+                {% endif %}
+
+                {% if st in ['new', 'claimed'] and can_skip and (st == 'new' or can_work) %}
+                <form action="/posts/{{ post.id }}/status" method="POST" class="mt-3 flex flex-wrap gap-2 items-center">
+                    <input type="hidden" name="status" value="skipped">
+                    <input type="text" name="notes" placeholder="Ghi chú (không bắt buộc)" class="flex-1 min-w-[160px] px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-xs text-[#1C1C1E]">
+                    <button type="submit" class="{{ btn }} bg-[#EFEFF4] hover:bg-[#E5E5EA] text-[#3C3C43] border-[#D9D9DE]">⏭ Bỏ qua (không giá trị)</button>
+                </form>
+                {% endif %}
+                {% if can_work and st in ['new', 'claimed', 'verifying', 'editing'] %}
+                <form action="/posts/{{ post.id }}/status" method="POST" class="mt-2 flex flex-wrap gap-2 items-center" onsubmit="return confirm('Bác bỏ tin này?');">
+                    <input type="hidden" name="status" value="rejected">
+                    <input type="text" name="notes" required placeholder="Lý do bác bỏ: tin giả, chưa kiểm chứng được... (bắt buộc)" class="flex-1 min-w-[160px] px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-xs text-[#1C1C1E]">
+                    <button type="submit" class="{{ btn }} bg-rose-50 hover:bg-rose-50 text-rose-700 border-rose-200">🚫 Bác bỏ</button>
+                </form>
+                {% endif %}
+
+                {% if can_assign and staff and st in ['new', 'claimed', 'verifying', 'editing'] %}
+                <form action="/posts/{{ post.id }}/assign" method="POST" class="mt-3 pt-3 border-t border-[#ECECEE] flex flex-wrap gap-2 items-center">
+                    <span class="text-xs text-[#8A8A8E]">Giao bài cho:</span>
+                    <select name="assignee_id" class="px-2.5 py-2 rounded-xl bg-white border border-[#D9D9DE] text-xs text-[#1C1C1E]">
+                        {% for u in staff %}<option value="{{ u.id }}" {{ 'selected' if u.id == post.assigned_user_id else '' }}>{{ u.full_name }} ({{ u.role.name.split(' (')[0] }})</option>{% endfor %}
+                    </select>
+                    <input type="text" name="notes" placeholder="Lời nhắn (không bắt buộc)" class="flex-1 min-w-[140px] px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-xs text-[#1C1C1E]">
+                    <button type="submit" class="{{ btn }} bg-indigo-50 hover:bg-indigo-800/40 text-indigo-700 border-indigo-200">👤 Giao việc</button>
+                </form>
+                {% endif %}
+                {% endif %}
+            </div>
+
+            <!-- AI Copilot Panel (On-Demand Assistant) -->
+            <div class="glass-panel p-5 rounded-2xl border border-indigo-200 bg-gradient-to-b from-indigo-950/30 to-[#F2F2F7]">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="text-base font-semibold text-indigo-700 flex items-center space-x-2">
+                        <span>✨ AI Copilot Biên Tập</span>
+                    </h2>
+                    <span class="text-[10px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-mono">
+                        Trợ lý (Không tự đăng)
+                    </span>
+                </div>
+                <p class="text-xs text-[#8A8A8E] mb-4">
+                    AI chỉ tạo bản nháp từ đúng nội dung nguồn; luôn kiểm tra lại trước khi dùng.
+                    <span id="ai-usage" class="text-indigo-700"></span>
+                </p>
+
+                {% if can_edit %}
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+                    {% for code, label in [('translate', '🌐 Dịch tiếng Việt'), ('summarize', '📑 Tóm tắt 5W1H'), ('rewrite', '✍️ Viết bài (tháp ngược)'), ('headlines', '🏷️ Gợi ý 5 tít'), ('script', '🎬 Kịch bản Shorts 60s'), ('script_long', '📺 Kịch bản YouTube 3-5 phút')] %}
+                    <button type="button" onclick="callAiApi('{{ code }}')" class="p-2 rounded-xl bg-indigo-50 hover:bg-indigo-800/40 text-indigo-700 border border-indigo-700/60 text-xs font-medium transition text-center">{{ label }}</button>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-xs text-[#AEAEB2] mb-3">Vai trò của bạn không dùng được AI.</p>
+                {% endif %}
+
+                <div id="ai-loading" class="hidden text-center py-4 text-xs text-indigo-700 animate-pulse">
+                    Đang chờ AI xử lý (có thể mất 10-40 giây)...
+                </div>
+                <div id="ai-result-box" class="hidden space-y-2">
+                    <div class="flex items-center justify-between text-xs text-[#8A8A8E]">
+                        <span>Kết quả gợi ý từ AI:</span>
+                        <button type="button" onclick="copyAiToEditor()" class="text-indigo-700 hover:underline font-semibold">
+                            &darr; Chép vào bản biên tập
+                        </button>
+                    </div>
+                    <textarea id="ai-result-text" rows="8" readonly
+                        class="w-full p-3 rounded-xl bg-[#F2F2F7] border border-indigo-200 text-xs text-[#1C1C1E] custom-scroll"></textarea>
+                </div>
+
+                {% if can_edit %}
+                <details class="mt-3 text-xs" id="ai-history-box" ontoggle="if (this.open) loadAiHistory()">
+                    <summary class="cursor-pointer text-[#8A8A8E] hover:text-[#1C1C1E]">🕘 Lịch sử AI của bài này</summary>
+                    <div id="ai-history-list" class="mt-2 space-y-2 max-h-80 overflow-y-auto custom-scroll"></div>
+                </details>
+                {% endif %}
+            </div>
+
+            <!-- Gemini image / video analysis -->
+            {% set ai_media = post.media_items | selectattr('media_type', 'in', ['photo', 'video']) | list %}
+            {% if ai_media %}
+            <div class="glass-panel p-5 rounded-2xl border border-cyan-200 bg-gradient-to-b from-cyan-950/20 to-[#F2F2F7]">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="text-base font-semibold text-cyan-700">🖼️ AI Xem Ảnh & Video</h2>
+                    <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200 font-mono">AI · Bản nháp</span>
+                </div>
+                <p class="text-xs text-[#8A8A8E] mb-3">AI xem trực tiếp ảnh/video của tin: mô tả, đọc chữ trong ảnh, gợi ý kiểm chứng, tóm tắt và chép lời video, làm phụ đề. Video có thể mất 1-3 phút.</p>
+                {% if can_edit %}
+                <div class="space-y-2">
+                    {% for m in ai_media %}
+                    {% set is_local = m.file_path and m.file_path != 'pending_download' and not m.file_path.startswith('http') %}
+                    <div class="p-2.5 rounded-xl bg-white/70 border border-[#ECECEE] flex flex-col sm:flex-row sm:items-center gap-2">
+                        <div class="flex items-center gap-2 sm:w-36 flex-shrink-0">
+                            {% if m.media_type == 'photo' and is_local %}
+                            <img src="/media/download?path={{ m.file_path | urlencode }}" alt="" loading="lazy" class="w-12 h-12 object-cover rounded-lg">
+                            {% elif m.media_type == 'photo' and m.file_path.startswith('http') %}
+                            <img src="{{ m.file_path }}" alt="" loading="lazy" referrerpolicy="no-referrer" class="w-12 h-12 object-cover rounded-lg">
+                            {% else %}
+                            <span class="w-12 h-12 rounded-lg bg-[#EFEFF4] flex items-center justify-center text-lg">{{ '🎞️' if m.media_type == 'video' else '🖼️' }}</span>
+                            {% endif %}
+                            <span class="text-xs text-[#3C3C43]">{{ 'Video' if m.media_type == 'video' else 'Ảnh' }} {{ loop.index }}</span>
+                        </div>
+                        {% if is_local or m.file_path.startswith('http') or m.remote_url %}
+                        <div class="flex flex-wrap gap-1.5">
+                            {% for code, spec in media_ai_actions.items() if spec.media == m.media_type %}
+                            <button type="button" onclick="startMediaAi({{ m.id }}, '{{ code }}', this)"
+                                class="px-2.5 py-1.5 rounded-lg bg-cyan-50 hover:bg-cyan-800/40 text-cyan-700 border border-cyan-200 text-[11px] font-medium transition">{{ spec.label }}</button>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <span class="text-[11px] text-amber-700">Tệp chưa có trên server: bấm "Tải từ nguồn về server" ở khung media trước.</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div id="media-ai-status" class="hidden mt-3 text-xs"></div>
+                <div id="media-ai-box" class="hidden mt-2 space-y-2">
+                    <div class="flex items-center justify-between text-xs text-[#8A8A8E]">
+                        <span id="media-ai-title">Kết quả</span>
+                        <span class="space-x-3">
+                            <a id="media-ai-file" href="#" class="hidden text-cyan-700 hover:underline font-semibold">⬇️ Tải file phụ đề .srt</a>
+                            <button type="button" onclick="copyMediaAiToEditor()" class="text-cyan-700 hover:underline font-semibold">&darr; Chép vào bản biên tập</button>
+                        </span>
+                    </div>
+                    <textarea id="media-ai-text" rows="10" readonly class="w-full p-3 rounded-xl bg-[#F2F2F7] border border-cyan-200 text-xs text-[#1C1C1E] custom-scroll"></textarea>
+                </div>
+
+                <details class="mt-3 text-xs" ontoggle="if (this.open) loadMediaAiHistory()">
+                    <summary class="cursor-pointer text-[#8A8A8E] hover:text-[#1C1C1E]">🕘 Lịch sử AI ảnh/video của bài này</summary>
+                    <div id="media-ai-history" class="mt-2 space-y-2 max-h-80 overflow-y-auto custom-scroll"></div>
+                </details>
+                {% else %}
+                <p class="text-xs text-[#AEAEB2]">Vai trò của bạn không dùng được AI.</p>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Real Video Production & Omnichannel Publishing Studio -->
+            <div class="glass-panel p-5 rounded-2xl border border-rose-200 bg-gradient-to-b from-rose-950/20 via-[#F2F2F7] to-[#F2F2F7] space-y-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2.5">
+                        <span class="text-2xl">🎬</span>
+                        <div>
+                            <h2 class="text-base font-bold text-rose-700">Phòng Dựng Video & Xuất Bản Đa Nền Tảng Thật</h2>
+                            <p class="text-[11px] text-[#8A8A8E]">Tải media gốc từ nguồn &rarr; Tự động dựng video 9:16 &rarr; Admin duyệt &rarr; Người bấm đăng lên Telegram, YouTube, Facebook</p>
+                        </div>
+                    </div>
+                    <span class="text-[10px] px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-semibold uppercase tracking-wider">
+                        ⚡ Real Pipeline
+                    </span>
+                </div>
+
+                <!-- Master 1-Click Action Bar -->
+                <div class="p-4 rounded-xl bg-gradient-to-r from-amber-500/20 via-rose-500/20 to-indigo-500/20 border border-amber-500/40 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-3xl">⚡</span>
+                        <div>
+                            <h3 class="text-sm font-extrabold text-amber-700">TỰ ĐỘNG TẠO VIDEO TRONG 1 CLICK</h3>
+                            <p class="text-[11px] text-[#3C3C43]">Tải ảnh/video gốc &rarr; AI viết kịch bản &rarr; Lồng tiếng &rarr; Dựng video 9:16. Không tự đăng — video lưu vào Kho video.</p>
+                        </div>
+                    </div>
+                    <div class="w-full sm:w-auto flex flex-col sm:flex-row items-stretch gap-2 flex-shrink-0">
+                    {% set default_lang = default_video_language() %}
+                    <select id="video-lang" title="Ngôn ngữ của video: AI viết lời và chọn giọng đọc theo thứ tiếng này"
+                        class="px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-xs font-semibold text-[#1C1C1E]">
+                        {% for l in video_languages() %}
+                        <option value="{{ l.code }}" {{ 'selected' if l.code == default_lang else '' }}>{{ l.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" onclick="runFullAutoPipeline()" id="btn-full-auto"
+                        class="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-rose-600 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white font-black text-xs shadow-xl shadow-rose-900/40 transition transform active:scale-95 flex items-center justify-center space-x-2 flex-shrink-0">
+                        <span>🚀 1-CLICK TẠO VIDEO</span>
+                    </button>
+                    </div>
+                </div>
+                <div id="full-auto-progress" class="hidden p-3 rounded-xl bg-[#F2F2F7] border border-amber-500/50 text-xs space-y-1.5 animate-pulse">
+                    <div class="flex items-center space-x-2 text-amber-700 font-bold" id="auto-progress-text">
+                        <span>⏳ Đang khởi chạy quy trình tự động toàn diện...</span>
+                    </div>
+                </div>
+
+                <!-- Step 1: Download Original Media -->
+                <div class="p-3.5 rounded-xl bg-[#F2F2F7] border border-[#ECECEE] space-y-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="h-5 w-5 rounded-full bg-blue-50 text-blue-700 border border-blue-700/60 flex items-center justify-center text-[10px] font-bold">1</span>
+                            <span class="text-xs font-bold text-[#1C1C1E]">Tải & Đồng Bộ Video/Ảnh Gốc Từ Trang Nguồn:</span>
+                        </div>
+                        <button type="button" onclick="fetchOriginalMedia()" id="btn-fetch-media"
+                            class="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-[11px] shadow transition flex items-center space-x-1.5">
+                            <span>⬇️ Tải Media Gốc Về Máy</span>
+                        </button>
+                    </div>
+                    <div class="text-[11px] text-[#8A8A8E] flex items-center space-x-1">
+                        <span class="text-[#AEAEB2]">Link nguồn:</span>
+                        <a href="{{ post.source_url if post.source_url and post.source_url.startswith('http') else '#' }}" target="_blank" rel="noopener" class="text-blue-700 hover:underline truncate max-w-md font-mono">
+                            {{ post.source_url or 'Không có URL ngoài' }}
+                        </a>
+                    </div>
+                    <div id="fetch-media-status" class="text-[11px] text-[#3C3C43] bg-white/70 p-2 rounded border border-[#ECECEE]">
+                        {% if post.has_media %}
+                        <span class="text-emerald-700">✓ Đã có {{ post.media_count }} tệp media đính kèm bài viết này.</span>
+                        {% else %}
+                        <span class="text-[#AEAEB2]">Chưa tải media gốc. Nhấn nút màu xanh bên trên để hệ thống tự quét và tải video/ảnh từ bài gốc.</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Step 2: Remix and Edit into New Video -->
+                <div class="p-3.5 rounded-xl bg-[#F2F2F7] border border-[#ECECEE] space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="h-5 w-5 rounded-full bg-rose-50 text-rose-700 border border-rose-700/60 flex items-center justify-center text-[10px] font-bold">2</span>
+                            <span class="text-xs font-bold text-[#1C1C1E]">Biên Tập & Remix Tạo Video Mới (FFmpeg + AI + Giọng Đọc):</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <a href="/editor/video?post_id={{ post.id }}"
+                                class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] shadow transition flex items-center space-x-1.5">
+                                <span>🎛️ Xưởng Dựng Video (Studio)</span>
+                            </a>
+                            <button type="button" onclick="remixNewsVideo()" id="btn-remix-video"
+                                class="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-[11px] shadow transition flex items-center space-x-1.5">
+                                <span>⚡ 1-Click Remix Nhanh</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <p class="text-[11px] text-[#8A8A8E] leading-relaxed">
+                        Tự động crop khung dọc 9:16, tạo nền mờ (blur background), chèn tít đỏ Breaking News, ghép giọng đọc theo ngôn ngữ đã chọn ở ô phía trên (mặc định là giọng mặc định ở trang Giọng đọc) và chuẩn hóa âm thanh.
+                    </p>
+
+                    <!-- Preview Container -->
+                    <div id="video-result-container" class="{{ '' if latest_video else 'hidden' }} pt-3 border-t border-[#ECECEE] space-y-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                            <div class="bg-black/60 rounded-xl p-3 border border-[#ECECEE] flex flex-col items-center">
+                                <span class="text-[11px] font-semibold text-[#8A8A8E] mb-2">Video Remix Mới (1080x1920 9:16)</span>
+                                <div class="w-full max-w-[220px] aspect-[9/16] bg-black rounded-lg overflow-hidden border border-[#D9D9DE] shadow-2xl">
+                                    <video id="video-preview-player" controls playsinline class="w-full h-full object-cover"
+                                        {% if latest_video %}src="/media/download?path={{ latest_video.file_path | urlencode }}"{% endif %}>
+                                        Trình duyệt của bạn không hỗ trợ thẻ video.
+                                    </video>
+                                </div>
+                                <a id="btn-download-video" href="{{ '/media/download?path=' ~ (latest_video.file_path | urlencode) ~ '&download=1' if latest_video else '#' }}"
+                                    class="mt-2.5 w-full max-w-[220px] text-center px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition">
+                                    ⬇️ Tải Video Hoàn Chỉnh (.mp4)
+                                </a>
+                                <a href="/editor/video?post_id={{ post.id }}"
+                                    class="mt-1.5 w-full max-w-[220px] text-center px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white font-bold text-xs transition">
+                                    ✂️ Chỉnh Sửa Trong Studio
+                                </a>
+                            </div>
+
+                            <div class="space-y-2.5 text-xs">
+                                {% if voice_audio_rel or voice_jobs %}
+                                <div class="p-3 rounded-xl bg-white border border-indigo-700/60 shadow-lg">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <h4 class="text-xs font-bold text-indigo-700 flex items-center space-x-1.5">
+                                            <span>🎙️ Giọng Đọc Đã Tạo (Voiceover):</span>
+                                        </h4>
+                                        <a href="/voice?post_id={{ post.id }}" class="text-[11px] text-blue-700 hover:underline">Phòng Giọng Đọc ↗</a>
+                                    </div>
+                                    {% if voice_audio_rel %}
+                                    <audio controls class="w-full h-8 mb-1" src="/media/download?path={{ voice_audio_rel | urlencode }}"></audio>
+                                    {% elif voice_jobs %}
+                                    <audio controls class="w-full h-8 mb-1" src="/api/voice/jobs/{{ voice_jobs[0].id }}/audio"></audio>
+                                    <div class="text-[10px] text-[#8A8A8E]">Giọng: {{ voice_jobs[0].voice_label }} ({{ '%.1f' % (voice_jobs[0].duration_seconds or 0) }}s)</div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                                <div class="p-3 rounded-xl bg-white border border-[#ECECEE]">
+                                    <h4 class="text-xs font-bold text-amber-700 mb-1 flex items-center space-x-1">
+                                        <span>✂️ Gói Dựng CapCut (.srt + voiceover + script):</span>
+                                    </h4>
+                                    <p class="text-[11px] text-[#3C3C43] mb-1">
+                                        Đã tạo sẵn file phụ đề <b>.srt</b> khớp từng câu, audio giọng đọc và kịch bản để kéo thả vào CapCut.
+                                    </p>
+                                    <div class="bg-[#F2F2F7] p-2 rounded text-[10px] font-mono text-[#8A8A8E] break-all" id="capcut-folder-text">
+                                        Đang tải thư mục...
+                                    </div>
+                                    <button type="button" onclick="openCapCutFinder()" id="btn-open-capcut-finder"
+                                        class="mt-2 w-full px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-800 text-indigo-700 border border-indigo-700/60 font-semibold text-[11px] transition flex items-center justify-center space-x-1.5">
+                                        <span>📂 Mở Thư Mục CapCut Trong Finder (Mac)</span>
+                                    </button>
+                                </div>
+
+                                <div class="p-3 rounded-xl bg-white border border-[#ECECEE]">
+                                    <h4 class="text-xs font-bold text-indigo-700 mb-1">📝 Kịch Bản Đọc & Tít:</h4>
+                                    <div id="video-script-text" class="text-[11px] text-[#1C1C1E] bg-[#F2F2F7] p-2.5 rounded max-h-32 overflow-y-auto custom-scroll leading-relaxed font-sans">
+                                    </div>
+                                    <div id="video-hashtags-text" class="text-[10px] text-cyan-700 font-mono mt-1"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Multi-Platform Publishing -->
+                <div class="p-3.5 rounded-xl bg-[#F2F2F7] border border-[#ECECEE] space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="h-5 w-5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-700/60 flex items-center justify-center text-[10px] font-bold">3</span>
+                            <span class="text-xs font-bold text-[#1C1C1E]">Xuất Bản Lên Kênh Telegram, Kênh YouTube, Fanpage:</span>
+                        </div>
+                        <a href="/settings/ai-config" class="text-[11px] text-indigo-700 hover:underline">
+                            + Thêm Kênh Đăng
+                        </a>
+                    </div>
+
+                    <!-- Target Selection Checkboxes -->
+                    <div class="space-y-2" id="publish-targets-container">
+                        {% if publish_targets %}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                            {% for t in publish_targets %}
+                            <label class="p-2.5 rounded-xl bg-white border border-[#ECECEE] flex items-center space-x-2.5 cursor-pointer hover:border-[#D9D9DE] transition">
+                                <input type="checkbox" name="publish_target_cb" value="{{ t.id }}" checked
+                                    class="rounded bg-[#F2F2F7] border-[#D9D9DE] text-emerald-600 focus:ring-emerald-500 h-4 w-4">
+                                <div class="truncate">
+                                    <span class="text-xs font-bold text-[#1C1C1E] block truncate">
+                                        {% if t.platform == 'telegram' %}📢{% elif t.platform == 'youtube' %}🔴{% elif t.platform == 'facebook' %}🔵{% else %}🌐{% endif %}
+                                        {{ t.name }}
+                                    </span>
+                                    <span class="text-[10px] text-[#8A8A8E] font-mono">{{ t.target_id }}</span>
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="p-3 rounded-xl bg-white border border-dashed border-[#ECECEE] text-[11px] text-[#8A8A8E] flex items-center justify-between">
+                            <span>Chưa cấu hình kênh xuất bản ngoại vi (Telegram / YouTube / Facebook).</span>
+                            <a href="/settings/ai-config" class="px-2.5 py-1 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-medium hover:bg-indigo-800/50">
+                                Cài đặt kênh ngay
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if not can_publish %}
+                    <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-700">
+                        🔒 Chỉ đăng được sau khi bài ở trạng thái <b>Đã duyệt</b> hoặc <b>Hoàn thành</b> (Chủ biên / Admin duyệt).
+                    </div>
+                    {% endif %}
+                    <!-- Action Button -->
+                    <div class="flex items-center space-x-3 pt-1">
+                        <button type="button" onclick="publishVideoToChannels()" id="btn-publish-channels" {{ '' if can_publish else 'disabled' }}
+                            class="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/30 transition flex items-center space-x-2">
+                            <span>🚀 Đăng Video Lên Các Kênh Đã Chọn Ngay</span>
+                        </button>
+                        <span id="publishing-spin" class="hidden items-center space-x-2 text-xs text-emerald-700 animate-pulse">
+                            <svg class="animate-spin h-4 w-4 text-emerald-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                            </svg>
+                            <span>Đang đẩy dữ liệu lên Telegram / YouTube / Facebook...</span>
+                        </span>
+                    </div>
+
+                    <!-- Publishing Results Box -->
+                    <div id="publish-results-box" class="hidden mt-2 p-3 rounded-xl bg-[#F2F2F7] border border-emerald-200 text-xs space-y-1.5">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Editor Form: Edited Text & Notes -->
+            <div class="glass-panel p-5 rounded-2xl">
+                <div class="flex items-center justify-between gap-2 mb-3">
+                    <h2 class="text-base font-semibold text-[#1C1C1E]">Nội Dung Biên Tập Cuối (Con người hoàn thiện)</h2>
+                    {% if can_edit %}
+                    <a href="/voice?post_id={{ post.id }}" class="flex-shrink-0 text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold flex items-center space-x-1 shadow transition" title="Mở Phòng Giọng Đọc với nội dung tin này">
+                        <span>🎙️ Tạo giọng đọc cho tin</span>
+                    </a>
+                    {% endif %}
+                </div>
+                <form action="/posts/{{ post.id }}/edit" method="POST" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-[#3C3C43] mb-1.5">Bản dịch / Nội dung hoàn chỉnh</label>
+                        <textarea id="editor-text" name="edited_text" rows="8" placeholder="Nhập bản dịch hoặc nội dung bài viết hoàn chỉnh tại đây..."
+                            class="w-full p-3 rounded-xl bg-white border border-[#D9D9DE] text-sm text-[#1C1C1E] focus:outline-none focus:border-blue-500 custom-scroll leading-relaxed">{{ post.edited_text or '' }}</textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-[#3C3C43] mb-1.5">Ghi chú xác minh & Bản quyền</label>
+                        <input type="text" name="editorial_notes" value="{{ post.editorial_notes or '' }}" placeholder="Ví dụ: Đã đối chiếu với Reuters, bản quyền video thuộc AP..."
+                            class="w-full px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-xs text-[#1C1C1E] focus:outline-none focus:border-blue-500">
+                    </div>
+
+                    {% if (is_owner or can_assign) and post.workflow_status in ['claimed', 'verifying', 'editing', 'reviewing', 'approved'] %}
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-md shadow-blue-500/20 transition">
+                        Lưu Nội Dung Biên Tập
+                    </button>
+                    {% elif can_claim and post.workflow_status == 'new' %}
+                    <p class="text-[11px] text-[#8A8A8E]">Bấm <b>Nhận xử lý</b> để bắt đầu biên tập bài này.</p>
+                    {% else %}
+                    <p class="text-[11px] text-[#8A8A8E]">Chỉ người phụ trách bài hoặc Trưởng ban được sửa nội dung.</p>
+                    {% endif %}
+                </form>
+            </div>
+
+            <!-- Workflow Audit Log Trail -->
+            <div class="glass-panel p-5 rounded-2xl">
+                <h2 class="text-base font-semibold text-[#1C1C1E] mb-3">Lịch Sử Thao Tác (Audit Log)</h2>
+                <div class="space-y-2 text-xs">
+                    {% for log in post.audit_logs %}
+                    <div class="p-2.5 rounded-xl bg-white/70 border border-[#ECECEE] flex items-center justify-between">
+                        <div>
+                            <span class="font-semibold text-[#1C1C1E]">{{ log.user.full_name if log.user else 'Hệ thống' }}:</span>
+                            <span class="text-[#3C3C43] ml-1">{{ log.notes }}</span>
+                        </div>
+                        <span class="text-[11px] text-[#AEAEB2] flex-shrink-0 ml-2">
+                            {{ log.created_at.strftime('%H:%M %d/%m') }}
+                        </span>
+                    </div>
+                    {% else %}
+                    <p class="text-xs text-[#AEAEB2]">Chưa có lịch sử thao tác.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentRemixVideoPath = {{ (latest_video.file_path if latest_video else '') | tojson }};
+let currentScriptData = {{ latest_script | tojson }};
+
+function esc(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+}
+
+function safeUrl(u) {
+    return /^https?:\/\//i.test(u || '') ? esc(u) : '';
+}
+
+function mediaUrl(path, download) {
+    return '/media/download?path=' + encodeURIComponent(path) + (download ? '&download=1' : '');
+}
+
+async function postJson(url, body) {
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body)
+    });
+    let data = {};
+    try { data = await response.json(); } catch (e) {}
+    if (!response.ok && !data.error) data.error = data.detail || ('HTTP ' + response.status);
+    return data;
+}
+
+async function callAiApi(action) {
+    const loading = document.getElementById('ai-loading');
+    const resultBox = document.getElementById('ai-result-box');
+    const resultText = document.getElementById('ai-result-text');
+
+    loading.classList.remove('hidden');
+    resultBox.classList.add('hidden');
+    try {
+        const data = await postJson('/api/ai-assist', { post_id: {{ post.id }}, action: action });
+        if (data.usage) showAiUsage(data.usage);
+        if (data.success) {
+            resultText.value = data.result;
+            resultBox.classList.remove('hidden');
+            if (document.getElementById('ai-history-box')?.open) loadAiHistory();
+        } else {
+            alert('AI: ' + data.error);
+        }
+    } catch (e) {
+        alert('Lỗi kết nối AI: ' + e);
+    } finally {
+        loading.classList.add('hidden');
+    }
+}
+
+function showAiUsage(u) {
+    const el = document.getElementById('ai-usage');
+    if (el) el.textContent = `(Hôm nay bạn đã dùng ${u.used}/${u.limit} lượt)`;
+}
+
+async function loadAiHistory() {
+    const box = document.getElementById('ai-history-list');
+    box.innerHTML = '<div class="text-[#AEAEB2]">Đang tải...</div>';
+    try {
+        const res = await fetch('/api/posts/{{ post.id }}/ai-history');
+        const data = await res.json();
+        if (!data.items || !data.items.length) {
+            box.innerHTML = '<div class="text-[#AEAEB2]">Chưa có kết quả AI nào.</div>';
+            return;
+        }
+        box.innerHTML = data.items.map(it => `
+            <div class="p-2.5 rounded-xl bg-[#F2F2F7] border border-[#ECECEE]">
+                <div class="flex justify-between text-[11px] text-[#8A8A8E] mb-1">
+                    <span><b class="text-indigo-700">${esc(it.label)}</b> · ${esc(it.user)} · ${esc(it.created_at)}</span>
+                    <button type="button" class="text-indigo-700 hover:underline" data-ai-id="${it.id}">Dùng bản này</button>
+                </div>
+                <div class="whitespace-pre-wrap text-[#3C3C43] max-h-32 overflow-y-auto custom-scroll">${esc(it.text)}</div>
+            </div>`).join('');
+        box.querySelectorAll('button[data-ai-id]').forEach(btn => {
+            const item = data.items.find(x => String(x.id) === btn.dataset.aiId);
+            btn.addEventListener('click', () => {
+                document.getElementById('ai-result-text').value = item.text;
+                document.getElementById('ai-result-box').classList.remove('hidden');
+            });
+        });
+    } catch (e) {
+        box.innerHTML = '<div class="text-rose-700">Không tải được lịch sử.</div>';
+    }
+}
+
+{% if post.source and post.source.source_type in ['rss', 'web'] and not post.article_text and post.source_url %}
+document.addEventListener('DOMContentLoaded', () => fetchArticle(document.getElementById('btn-fetch-article')));
+{% endif %}
+async function fetchArticle(btn) {
+    const status = document.getElementById('article-status');
+    btn.disabled = true;
+    status.className = 'mt-1 text-xs text-[#8A8A8E] animate-pulse';
+    status.textContent = 'Đang tải trang báo...';
+    try {
+        const data = await postJson('/api/posts/{{ post.id }}/fetch-article', {});
+        if (data.success) { location.reload(); return; }
+        status.className = 'mt-1 text-xs text-amber-700';
+        status.textContent = data.error || 'Không lấy được toàn văn.';
+    } catch (e) {
+        status.className = 'mt-1 text-xs text-rose-700';
+        status.textContent = 'Lỗi kết nối máy chủ: ' + e;
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+// ----- AI xem ảnh & video (Gemini) -----
+function showMediaAiResult(job) {
+    const status = document.getElementById('media-ai-status');
+    const box = document.getElementById('media-ai-box');
+    if (job.status === 'running') {
+        status.className = 'mt-3 text-xs text-cyan-700 animate-pulse';
+        status.textContent = '⏳ ' + job.label + ': Gemini đang xem tệp...';
+        status.classList.remove('hidden');
+        return;
+    }
+    if (job.status === 'failed') {
+        status.className = 'mt-3 text-xs text-rose-700';
+        status.textContent = '✗ ' + job.label + ': ' + (job.error || 'AI không phản hồi.');
+        box.classList.add('hidden');
+        return;
+    }
+    status.classList.add('hidden');
+    document.getElementById('media-ai-title').textContent = job.label + (job.model ? ' · ' + job.model : '');
+    document.getElementById('media-ai-text').value = job.result || '';
+    const fileLink = document.getElementById('media-ai-file');
+    if (job.result_file) {
+        fileLink.href = mediaUrl(job.result_file, true);
+        fileLink.classList.remove('hidden');
+    } else {
+        fileLink.classList.add('hidden');
+    }
+    box.classList.remove('hidden');
+}
+
+async function startMediaAi(itemId, action, btn) {
+    btn.disabled = true;
+    try {
+        const data = await postJson('/api/ai-media', {post_id: {{ post.id }}, media_item_id: itemId, action: action});
+        if (!data.success) {
+            showMediaAiResult({status: 'failed', label: btn.textContent.trim(), error: data.error});
+            return;
+        }
+        showMediaAiResult({status: 'running', label: btn.textContent.trim()});
+        while (true) {
+            await new Promise(r => setTimeout(r, 3000));
+            const res = await fetch('/api/ai-media/jobs/' + data.job_id);
+            const body = await res.json();
+            if (!body.success) { showMediaAiResult({status: 'failed', label: '', error: body.error}); break; }
+            showMediaAiResult(body.job);
+            if (body.job.status !== 'running') break;
+        }
+    } catch (e) {
+        showMediaAiResult({status: 'failed', label: '', error: 'Lỗi kết nối máy chủ: ' + e});
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function copyMediaAiToEditor() {
+    const text = document.getElementById('media-ai-text').value;
+    const editor = document.getElementById('editor-text');
+    if (!editor) return;
+    editor.value = editor.value.trim() ? editor.value + '\n\n' + text : text;
+}
+
+async function loadMediaAiHistory() {
+    const list = document.getElementById('media-ai-history');
+    list.innerHTML = '<p class="text-[#AEAEB2]">Đang tải...</p>';
+    const res = await fetch('/api/posts/{{ post.id }}/ai-media-history');
+    const data = await res.json();
+    if (!data.items || !data.items.length) { list.innerHTML = '<p class="text-[#AEAEB2]">Chưa có lần nào.</p>'; return; }
+    list.innerHTML = data.items.map(j => `
+        <div class="p-2 rounded-lg bg-white border border-[#ECECEE]">
+            <div class="flex justify-between text-[11px] text-[#8A8A8E]"><span>${esc(j.label)} · tệp #${esc(j.media_item_id)}</span><span>${esc(j.created_at.slice(11, 16))} ${esc(j.status)}</span></div>
+            <div class="mt-1 text-[#3C3C43] whitespace-pre-wrap max-h-32 overflow-y-auto custom-scroll">${esc(j.result || j.error || '')}</div>
+            ${j.result_file ? `<a class="text-cyan-700 hover:underline" href="${mediaUrl(j.result_file, true)}">⬇️ ${esc(j.result_file.split('/').pop())}</a>` : ''}
+        </div>`).join('');
+}
+
+function copyAiToEditor() {
+    const aiText = document.getElementById('ai-result-text').value;
+    const editor = document.getElementById('editor-text');
+    if (editor.value.trim() !== '') {
+        if (!confirm('Ghi đè nội dung đang có trong ô biên tập?')) return;
+    }
+    editor.value = aiText;
+}
+
+async function downloadFromSource(itemId, btn) {
+    btn.disabled = true;
+    const old = btn.innerHTML;
+    btn.innerHTML = '⏳ Đang tải...';
+    try {
+        const data = await postJson('/api/media/' + itemId + '/download-from-source', {});
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Không tải được: ' + data.error);
+        }
+    } catch (e) {
+        alert('Lỗi kết nối máy chủ: ' + e);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = old;
+    }
+}
+
+// 1. Tải media gốc từ bài viết
+async function fetchOriginalMedia() {
+    const btn = document.getElementById('btn-fetch-media');
+    const statusBox = document.getElementById('fetch-media-status');
+
+    btn.disabled = true;
+    const originalBtnHtml = btn.innerHTML;
+    btn.innerHTML = '<span>⏳ Đang tải media gốc...</span>';
+    statusBox.innerHTML = '<span class="text-blue-700 animate-pulse">⏳ Đang phân tích link nguồn và tải video/ảnh về máy chủ...</span>';
+
+    try {
+        const data = await postJson('/api/fetch-original-media', { post_id: {{ post.id }} });
+        if (data.success && data.media_count > 0) {
+            const filesListHtml = data.files.map(f => `<li class="font-mono text-[10px] truncate"><a class="text-blue-700 hover:underline" href="${mediaUrl(f, true)}">⬇️ ${esc(f)}</a></li>`).join('');
+            statusBox.innerHTML = `
+                <div class="text-emerald-700 font-bold mb-1">✓ Đã tải thành công ${esc(data.media_count)} tệp media gốc!</div>
+                <ul class="space-y-0.5 mt-1 max-h-24 overflow-y-auto custom-scroll">${filesListHtml}</ul>
+            `;
+        } else {
+            statusBox.innerHTML = `<span class="text-amber-700">⚠️ ${esc(data.message || data.error || 'Không tìm thấy video/ảnh nào từ URL này hoặc trang chặn tải.')}</span>`;
+        }
+    } catch (e) {
+        statusBox.innerHTML = `<span class="text-rose-700">✗ Lỗi tải media: ${esc(e)}</span>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalBtnHtml;
+    }
+}
+
+function showVideoResult(data) {
+    const container = document.getElementById('video-result-container');
+    const player = document.getElementById('video-preview-player');
+    const dlBtn = document.getElementById('btn-download-video');
+    const capcutFolder = document.getElementById('capcut-folder-text');
+    const scriptBox = document.getElementById('video-script-text');
+    const tagsBox = document.getElementById('video-hashtags-text');
+
+    currentRemixVideoPath = data.video_path;
+    currentScriptData = data.script || {};
+
+    player.src = mediaUrl(data.video_path, false);
+    dlBtn.href = mediaUrl(data.video_path, true);
+    capcutFolder.innerText = '📁 Tệp video sẵn sàng: ' + data.video_path;
+
+    const s = currentScriptData;
+    scriptBox.innerHTML = `
+        <div class="font-bold text-amber-700 mb-1">📢 Tít đọc: ${esc(s.hook_title)}</div>
+        <div class="mb-2 italic text-[#3C3C43]">${esc(s.voiceover)}</div>
+        <div class="border-t border-[#ECECEE] pt-1 text-[11px] text-[#8A8A8E] space-y-0.5">
+            <div>• ${esc(s.bullet_1)}</div>
+            <div>• ${esc(s.bullet_2)}</div>
+            <div>• ${esc(s.bullet_3)}</div>
+        </div>
+    `;
+    tagsBox.innerText = s.hashtags || '#tintuc #thoisu #iNew';
+
+    container.classList.remove('hidden');
+    player.load();
+    container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// 2. Dựng video 9:16
+async function remixNewsVideo() {
+    const btn = document.getElementById('btn-remix-video');
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+    const originalBtnHtml = btn.innerHTML;
+    btn.innerHTML = '<span>⚙️ Đang dựng video 9:16 + lồng tiếng AI...</span>';
+
+    try {
+        const data = await postJson('/api/remix-video', { post_id: {{ post.id }}, language: document.getElementById('video-lang').value });
+        if (data.success) {
+            showVideoResult(data);
+        } else {
+            alert('Lỗi dựng video: ' + (data.error || 'Không xác định'));
+        }
+    } catch (e) {
+        alert('Lỗi kết nối máy chủ: ' + e);
+    } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        btn.innerHTML = originalBtnHtml;
+    }
+}
+
+function renderPublishResults(results) {
+    let html = '<div class="font-bold text-[#1C1C1E] mb-1.5 border-b border-[#ECECEE] pb-1"><span>Kết quả đăng kênh:</span></div><div class="space-y-1.5">';
+    for (const r of (results || [])) {
+        const name = esc(r.name || r.target_id || 'Kênh');
+        if (r.success) {
+            const url = safeUrl(r.url);
+            html += `
+                <div class="p-2 rounded bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-between">
+                    <div class="flex items-center space-x-1.5 truncate">
+                        <span>✅</span>
+                        <span class="font-bold truncate">${name}</span>
+                        <span class="text-[10px] text-[#8A8A8E] uppercase font-mono">(${esc(r.platform)})</span>
+                    </div>
+                    ${url ? `<a href="${url}" target="_blank" rel="noopener" class="text-cyan-700 hover:underline font-mono text-[11px] flex-shrink-0 ml-2">Xem bài đăng ↗</a>` : ''}
+                </div>`;
+        } else {
+            html += `
+                <div class="p-2 rounded bg-rose-50 border border-rose-200 text-rose-700 flex items-center space-x-1.5">
+                    <span>❌</span>
+                    <span class="font-bold">${name}:</span>
+                    <span class="text-[11px] truncate">${esc(r.error || r.message || 'Lỗi gửi tin')}</span>
+                </div>`;
+        }
+    }
+    html += '</div>';
+    const resultBox = document.getElementById('publish-results-box');
+    resultBox.innerHTML = html;
+    resultBox.classList.remove('hidden');
+}
+
+// 3. Đăng video lên các kênh (chỉ khi bài đã được duyệt)
+async function publishVideoToChannels() {
+    const checkedBoxes = Array.from(document.querySelectorAll('input[name="publish_target_cb"]:checked'));
+    if (checkedBoxes.length === 0) {
+        alert('Vui lòng chọn ít nhất một kênh xuất bản (Telegram / YouTube / Facebook).');
+        return;
+    }
+    if (!currentRemixVideoPath) {
+        alert('Chưa có video. Hãy dựng video trước (bước 2).');
+        return;
+    }
+    if (!confirm('Xác nhận đăng video này lên ' + checkedBoxes.length + ' kênh?')) return;
+
+    const targetIds = checkedBoxes.map(cb => parseInt(cb.value)).filter(id => !isNaN(id));
+    const btn = document.getElementById('btn-publish-channels');
+    const spin = document.getElementById('publishing-spin');
+    document.getElementById('publish-results-box').classList.add('hidden');
+
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+    spin.classList.remove('hidden');
+    spin.classList.add('flex');
+
+    try {
+        const data = await postJson('/api/publish-video', {
+            post_id: {{ post.id }},
+            target_ids: targetIds,
+            video_path: currentRemixVideoPath,
+            script: currentScriptData || {}
+        });
+        if (data.success) {
+            renderPublishResults(data.results);
+        } else {
+            alert('Lỗi xuất bản: ' + (data.error || 'Có lỗi xảy ra'));
+        }
+    } catch (e) {
+        alert('Lỗi kết nối máy chủ: ' + e);
+    } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        spin.classList.add('hidden');
+        spin.classList.remove('flex');
+    }
+}
+
+// 4. Mở thư mục CapCut trong Finder (chỉ khi server chạy trên Mac)
+async function openCapCutFinder() {
+    const btn = document.getElementById('btn-open-capcut-finder');
+    const oldText = btn.innerHTML;
+    btn.innerHTML = '<span>⏳ Đang mở Finder...</span>';
+    try {
+        const data = await postJson('/api/open-in-finder', { post_id: {{ post.id }} });
+        if (data.success) {
+            btn.innerHTML = '<span>✓ Đã mở thư mục CapCut trên Finder</span>';
+            setTimeout(() => { btn.innerHTML = oldText; }, 3000);
+        } else {
+            alert('Lỗi mở Finder: ' + (data.error || 'Thư mục chưa được tạo.'));
+            btn.innerHTML = oldText;
+        }
+    } catch (e) {
+        alert('Lỗi: ' + e);
+        btn.innerHTML = oldText;
+    }
+}
+
+// 5. 1-click: tải media -> kịch bản -> lồng tiếng -> dựng video (không đăng)
+async function runFullAutoPipeline() {
+    const btn = document.getElementById('btn-full-auto');
+    const progBox = document.getElementById('full-auto-progress');
+    const progText = document.getElementById('auto-progress-text');
+
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+    progBox.classList.remove('hidden');
+    progBox.classList.add('animate-pulse');
+    progText.innerHTML = '<span>⏳ [1/3] Đang tải ảnh/video gốc và viết kịch bản AI...</span>';
+    const t1 = setTimeout(() => { progText.innerHTML = '<span>⚙️ [2/3] Đang lồng tiếng và dựng video 9:16 bằng FFmpeg...</span>'; }, 4000);
+    const t2 = setTimeout(() => { progText.innerHTML = '<span>📦 [3/3] Đang đóng gói phụ đề .SRT và kịch bản CapCut...</span>'; }, 9000);
+
+    try {
+        const data = await postJson('/api/full-auto-pipeline', { post_id: {{ post.id }}, language: document.getElementById('video-lang').value });
+        if (data.success) {
+            showVideoResult(data);
+            progBox.classList.remove('animate-pulse');
+            progText.className = 'flex items-center space-x-2 text-emerald-700 font-bold';
+            progText.innerHTML = `<span>✓ Đã tạo xong video (dùng ${esc(data.media_count)} tệp media). Video đã lưu vào Kho video — chưa đăng lên kênh nào.</span>`;
+        } else {
+            alert('Lỗi quy trình: ' + (data.error || 'Có lỗi xảy ra'));
+            progBox.classList.add('hidden');
+        }
+    } catch (e) {
+        alert('Lỗi kết nối máy chủ: ' + e);
+        progBox.classList.add('hidden');
+    } finally {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+}
+</script>
+{% endblock %}

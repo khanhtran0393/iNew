@@ -1,0 +1,333 @@
+{% extends "layout.html" %}
+
+{% block title %}Video Studio #{{ post.id }} — iNew{% endblock %}
+{% block page_padding %}md:p-5{% endblock %}
+{% block container_width %}max-w-[1720px]{% endblock %}
+
+{% block content %}
+<style>
+    /* Fonts for the video text (all with Vietnamese, SIL Open Font License, see the *-OFL.txt next to them) */
+    @font-face { font-family: 'Be Vietnam Pro'; font-weight: 400; font-display: swap; src: url('/static/fonts/BeVietnamPro-Regular.ttf') format('truetype'); }
+    @font-face { font-family: 'Be Vietnam Pro'; font-weight: 700; font-display: swap; src: url('/static/fonts/BeVietnamPro-Bold.ttf') format('truetype'); }
+    @font-face { font-family: 'Be Vietnam Pro'; font-weight: 800; font-display: swap; src: url('/static/fonts/BeVietnamPro-ExtraBold.ttf') format('truetype'); }
+    @font-face { font-family: 'Montserrat'; font-weight: 100 900; font-display: swap; src: url('/static/fonts/Montserrat-Variable.ttf') format('truetype'); }
+    @font-face { font-family: 'Oswald'; font-weight: 200 700; font-display: swap; src: url('/static/fonts/Oswald-Variable.ttf') format('truetype'); }
+    @font-face { font-family: 'Playfair Display'; font-weight: 400 900; font-display: swap; src: url('/static/fonts/PlayfairDisplay-Variable.ttf') format('truetype'); }
+    #stage .canvas-container { position: absolute !important; left: 0; top: 0; }
+    #bg-blur video, #bg-blur img { transform: scale(1.12); }
+    .studio-tab[aria-selected="true"] { background: #007AFF; color: #fff; border-color: #007AFF; }
+    .studio-chip[aria-pressed="true"] { background: #EAF4FF; border-color: #007AFF; color: #0062CC; box-shadow: 0 0 0 1px #007AFF inset; }
+    .tl-bar { touch-action: none; }
+    .tl-bar .tl-handle { position: absolute; top: 0; bottom: 0; width: 8px; cursor: ew-resize; }
+    .tl-row[aria-selected="true"] .tl-name { color: #007AFF; font-weight: 700; }
+    .tl-row[aria-selected="true"] .tl-bar { box-shadow: 0 0 0 2px #1C1C1E inset; }
+    html.dark .studio-chip[aria-pressed="true"] { background: rgba(10, 132, 255, 0.22); color: #64D2FF; border-color: #0A84FF; }
+    html.dark .tl-row[aria-selected="true"] .tl-bar { box-shadow: 0 0 0 2px #FFFFFF inset; }
+</style>
+
+<div id="studio" class="space-y-3">
+    <!-- Top bar -->
+    <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="min-w-0">
+            <div class="flex items-center gap-2 text-xs">
+                <a href="/posts/{{ post.id }}" class="px-2.5 py-1 rounded-lg bg-white border border-[#D9D9DE] hover:bg-[#EFEFF4] text-[#3C3C43] font-semibold">← Bài #{{ post.id }}</a>
+                <span class="font-semibold text-rose-700 uppercase tracking-wide">iNew Video Studio</span>
+            </div>
+            <h1 class="mt-1 text-base md:text-lg font-bold text-[#1C1C1E] truncate max-w-[70vw]">{{ (post.edited_text or post.original_text or '')[:110] }}</h1>
+        </div>
+        <div class="flex flex-wrap items-center gap-1.5">
+            <button type="button" id="btn-undo" title="Hoàn tác (Ctrl+Z)" class="px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-sm font-bold text-[#3C3C43] hover:bg-[#EFEFF4] disabled:opacity-40">↶</button>
+            <button type="button" id="btn-redo" title="Làm lại (Ctrl+Y)" class="px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-sm font-bold text-[#3C3C43] hover:bg-[#EFEFF4] disabled:opacity-40">↷</button>
+            <button type="button" id="btn-save-draft" class="px-3.5 py-2 rounded-xl bg-white border border-[#D9D9DE] text-xs font-semibold text-[#1C1C1E] hover:bg-[#EFEFF4]">💾 Lưu nháp</button>
+            <button type="button" id="btn-render" class="px-5 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-xs font-bold shadow-lg shadow-rose-900/20 disabled:opacity-50">🎬 Xuất video</button>
+        </div>
+    </div>
+
+    <!-- Render progress and result -->
+    <div id="render-status" class="hidden flex items-center gap-2 p-3 rounded-xl bg-white border border-[#D9D9DE] text-xs text-[#3C3C43]">
+        <svg class="animate-spin h-4 w-4 text-rose-500 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+        <span id="render-status-text">Đang xuất video...</span>
+    </div>
+    <div id="render-error" class="hidden p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700"></div>
+    <div id="render-result" class="hidden p-3 rounded-2xl border border-emerald-300 bg-emerald-50 flex flex-col sm:flex-row gap-3 sm:items-center">
+        <video id="render-result-video" controls playsinline class="w-full sm:w-56 max-h-72 rounded-lg bg-black"></video>
+        <div class="space-y-2 text-xs">
+            <p class="font-bold text-emerald-700">✅ Đã xuất video <span id="render-result-duration" class="font-mono font-normal text-[#3C3C43]"></span></p>
+            <div class="flex flex-wrap gap-2">
+                <a id="render-result-download" href="#" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold">⬇️ Tải video MP4</a>
+                <a href="/videos?tab=generated" class="px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E] font-semibold">📂 Kho video</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-[310px_minmax(0,1fr)_290px] gap-3 items-start">
+        <!-- Left: tools -->
+        <div class="glass-panel rounded-2xl border p-3 space-y-3 xl:max-h-[calc(100vh-150px)] overflow-y-auto custom-scroll">
+            <div class="grid grid-cols-3 gap-1" role="tablist">
+                <button type="button" class="studio-tab px-1 py-1.5 rounded-lg border border-[#D9D9DE] bg-white text-[11px] font-semibold text-[#3C3C43]" data-tab="frame" role="tab">🖼️ Khung</button>
+                <button type="button" class="studio-tab px-1 py-1.5 rounded-lg border border-[#D9D9DE] bg-white text-[11px] font-semibold text-[#3C3C43]" data-tab="text" role="tab">🔤 Chữ & khối</button>
+                <button type="button" class="studio-tab px-1 py-1.5 rounded-lg border border-[#D9D9DE] bg-white text-[11px] font-semibold text-[#3C3C43]" data-tab="image" role="tab">🏞️ Ảnh · AI</button>
+                <button type="button" class="studio-tab px-1 py-1.5 rounded-lg border border-[#D9D9DE] bg-white text-[11px] font-semibold text-[#3C3C43]" data-tab="templates" role="tab">🧩 Mẫu</button>
+                <button type="button" class="studio-tab px-1 py-1.5 rounded-lg border border-[#D9D9DE] bg-white text-[11px] font-semibold text-[#3C3C43]" data-tab="voice" role="tab">🎙️ Lời bình</button>
+                <button type="button" class="studio-tab px-1 py-1.5 rounded-lg border border-[#D9D9DE] bg-white text-[11px] font-semibold text-[#3C3C43]" data-tab="mc" role="tab">🧑‍💼 MC ảo</button>
+            </div>
+
+            <!-- Frame -->
+            <section data-panel="frame" class="space-y-3 text-xs">
+                <div>
+                    <p class="font-semibold text-[#3C3C43] mb-1.5">Khổ video</p>
+                    <div class="grid grid-cols-4 gap-1.5">
+                        <button type="button" class="studio-chip px-1 py-1.5 rounded-lg border border-[#D9D9DE] bg-white font-bold" data-aspect="9:16">9:16<span class="block text-[9px] font-normal text-[#8A8A8E]">Dọc</span></button>
+                        <button type="button" class="studio-chip px-1 py-1.5 rounded-lg border border-[#D9D9DE] bg-white font-bold" data-aspect="16:9">16:9<span class="block text-[9px] font-normal text-[#8A8A8E]">Ngang</span></button>
+                        <button type="button" class="studio-chip px-1 py-1.5 rounded-lg border border-[#D9D9DE] bg-white font-bold" data-aspect="1:1">1:1<span class="block text-[9px] font-normal text-[#8A8A8E]">Vuông</span></button>
+                        <button type="button" class="studio-chip px-1 py-1.5 rounded-lg border border-[#D9D9DE] bg-white font-bold" data-aspect="4:5">4:5<span class="block text-[9px] font-normal text-[#8A8A8E]">Facebook</span></button>
+                    </div>
+                </div>
+                <div>
+                    <p class="font-semibold text-[#3C3C43] mb-1.5">Hình nền của video</p>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        <button type="button" class="studio-chip px-1 py-1.5 rounded-lg border border-[#D9D9DE] bg-white font-semibold" data-bg-source="post">Video, ảnh bài</button>
+                        <button type="button" class="studio-chip px-1 py-1.5 rounded-lg border border-[#D9D9DE] bg-white font-semibold" data-bg-source="asset">Ảnh tự chọn</button>
+                        <button type="button" class="studio-chip px-1 py-1.5 rounded-lg border border-[#D9D9DE] bg-white font-semibold" data-bg-source="color">Màu trơn</button>
+                    </div>
+                    <p id="bg-source-note" class="mt-1 text-[11px] text-[#8A8A8E]"></p>
+                </div>
+                <div>
+                    <p class="font-semibold text-[#3C3C43] mb-1.5">Cách đặt hình nền</p>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        <button type="button" class="studio-chip px-1 py-1.5 rounded-lg border border-[#D9D9DE] bg-white font-semibold" data-fit="contain" data-fill="blur">Nền mờ</button>
+                        <button type="button" class="studio-chip px-1 py-1.5 rounded-lg border border-[#D9D9DE] bg-white font-semibold" data-fit="cover" data-fill="blur">Lấp đầy</button>
+                        <button type="button" class="studio-chip px-1 py-1.5 rounded-lg border border-[#D9D9DE] bg-white font-semibold" data-fit="contain" data-fill="color">Viền màu</button>
+                    </div>
+                    <label class="mt-2 flex items-center gap-2 text-[#3C3C43]">Màu nền <input type="color" id="bg-color" class="h-7 w-12 rounded border border-[#D9D9DE] bg-white"></label>
+                </div>
+                <div>
+                    <p class="font-semibold text-[#3C3C43]">Phóng to hình nền: <span id="bg-scale-value" class="font-mono text-blue-700">100%</span></p>
+                    <input type="range" id="bg-scale" min="20" max="300" step="1" value="100" class="w-full accent-blue-500">
+                    <div class="flex gap-1.5 mt-1">
+                        <button type="button" id="btn-bg-drag" class="studio-chip flex-1 px-2 py-1.5 rounded-lg border border-[#D9D9DE] bg-white font-semibold">✋ Kéo hình nền</button>
+                        <button type="button" id="btn-bg-reset" class="px-2 py-1.5 rounded-lg border border-[#D9D9DE] bg-white font-semibold">Đặt lại</button>
+                    </div>
+                    <p class="mt-1 text-[11px] text-[#8A8A8E]">Bật "Kéo hình nền" rồi kéo trên khung để dời hình, lăn chuột để phóng to.</p>
+                </div>
+                <div id="trim-box" class="p-2.5 rounded-xl bg-[#F2F2F7] border border-[#ECECEE] space-y-1.5">
+                    <p class="font-semibold text-[#3C3C43]">✂️ Đoạn video nền dùng (giây)</p>
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <label class="block text-[10px] text-[#8A8A8E]">Từ giây
+                            <span class="flex gap-1 mt-0.5"><input type="number" id="trim-start" min="0" step="0.5" value="0" class="w-full px-2 py-1 rounded bg-white border border-[#D9D9DE] font-mono text-[#1C1C1E]">
+                            <button type="button" id="btn-trim-start-now" title="Lấy lúc đang xem" class="px-1.5 rounded bg-white border border-[#D9D9DE]">⏱</button></span></label>
+                        <label class="block text-[10px] text-[#8A8A8E]">Đến giây
+                            <span class="flex gap-1 mt-0.5"><input type="number" id="trim-end" min="0" step="0.5" placeholder="hết lời bình" class="w-full px-2 py-1 rounded bg-white border border-[#D9D9DE] font-mono text-[#1C1C1E]">
+                            <button type="button" id="btn-trim-end-now" title="Lấy lúc đang xem" class="px-1.5 rounded bg-white border border-[#D9D9DE]">⏱</button></span></label>
+                    </div>
+                    <p class="text-[10px] text-[#8A8A8E]">Để trống "Đến giây" thì video dài theo lời bình (ít nhất 10 giây).</p>
+                </div>
+            </section>
+
+            <!-- Text and shapes -->
+            <section data-panel="text" class="space-y-3 text-xs" hidden>
+                <p class="text-[11px] text-[#8A8A8E]">Bấm để thêm vào khung rồi kéo đến chỗ cần đặt. Bấm đúp vào chữ trên khung để sửa ngay tại chỗ.</p>
+                <div class="grid grid-cols-2 gap-1.5">
+                    <button type="button" data-add-text="title" class="px-2 py-2.5 rounded-lg border border-[#D9D9DE] bg-white text-left"><span class="block text-sm font-extrabold text-[#1C1C1E]">Tiêu đề lớn</span><span class="text-[10px] text-[#8A8A8E]">Chữ to, viền đen</span></button>
+                    <button type="button" data-add-text="subtitle" class="px-2 py-2.5 rounded-lg border border-[#D9D9DE] bg-white text-left"><span class="block text-sm font-semibold bg-black/80 text-white px-1 rounded">Phụ đề có nền</span><span class="text-[10px] text-[#8A8A8E]">Nền đen mờ</span></button>
+                    <button type="button" data-add-text="badge" class="px-2 py-2.5 rounded-lg border border-[#D9D9DE] bg-white text-left"><span class="inline-block text-xs font-extrabold bg-red-600 text-white px-1.5 rounded">NÓNG</span><span class="block text-[10px] text-[#8A8A8E]">Nhãn nổi bật</span></button>
+                    <button type="button" data-add-text="lower" class="px-2 py-2.5 rounded-lg border border-[#D9D9DE] bg-white text-left"><span class="block text-sm font-bold text-[#1C1C1E]">Dải tít dưới</span><span class="text-[10px] text-[#8A8A8E]">Kiểu truyền hình</span></button>
+                    <button type="button" data-add-text="plain" class="px-2 py-2.5 rounded-lg border border-[#D9D9DE] bg-white text-left"><span class="block text-sm text-[#1C1C1E]">Chữ thường</span><span class="text-[10px] text-[#8A8A8E]">Đoạn chữ ngắn</span></button>
+                    <button type="button" data-add-text="source" class="px-2 py-2.5 rounded-lg border border-[#D9D9DE] bg-white text-left"><span class="block text-sm font-semibold text-[#1C1C1E]">Dòng nguồn tin</span><span class="text-[10px] text-[#8A8A8E]">Nguồn: ...</span></button>
+                </div>
+                <p class="font-semibold text-[#3C3C43]">Khối và đường kẻ</p>
+                <div class="grid grid-cols-4 gap-1.5">
+                    <button type="button" data-add-shape="box" class="px-1 py-2 rounded-lg border border-[#D9D9DE] bg-white"><span class="block mx-auto w-6 h-4 rounded bg-red-600"></span><span class="text-[10px]">Khối</span></button>
+                    <button type="button" data-add-shape="band" class="px-1 py-2 rounded-lg border border-[#D9D9DE] bg-white"><span class="block mx-auto w-8 h-2 bg-blue-700"></span><span class="text-[10px]">Dải băng</span></button>
+                    <button type="button" data-add-shape="line" class="px-1 py-2 rounded-lg border border-[#D9D9DE] bg-white"><span class="block mx-auto w-8 h-0.5 bg-amber-500"></span><span class="text-[10px]">Đường kẻ</span></button>
+                    <button type="button" data-add-shape="circle" class="px-1 py-2 rounded-lg border border-[#D9D9DE] bg-white"><span class="block mx-auto w-4 h-4 rounded-full bg-emerald-500"></span><span class="text-[10px]">Hình tròn</span></button>
+                </div>
+            </section>
+
+            <!-- Pictures and AI pictures -->
+            <section data-panel="image" class="space-y-3 text-xs" hidden>
+                <div>
+                    <p class="font-semibold text-[#3C3C43] mb-1.5">Ảnh của bài</p>
+                    <div id="post-photos" class="grid grid-cols-3 gap-1.5"></div>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <p class="font-semibold text-[#3C3C43]">Ảnh đã thêm</p>
+                        <button type="button" id="btn-upload" class="px-2 py-1 rounded-lg border border-[#D9D9DE] bg-white font-semibold">⬆️ Tải ảnh lên</button>
+                    </div>
+                    <input type="file" id="upload-input" accept="image/png,image/jpeg,image/webp" multiple class="hidden">
+                    <div id="asset-grid" class="grid grid-cols-3 gap-1.5"></div>
+                    <p class="mt-1 text-[10px] text-[#8A8A8E]">Bấm vào ảnh để đặt lên khung; nút "Nền" để dùng làm hình nền video.</p>
+                </div>
+                <div class="p-2.5 rounded-xl border border-indigo-200 bg-indigo-50 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <p class="font-bold text-indigo-700">🎨 Tạo ảnh bằng AI</p>
+                        <span class="px-1.5 py-0.5 rounded bg-white border border-indigo-200 text-[10px] text-indigo-700">có phí</span>
+                    </div>
+                    <textarea id="ai-prompt" rows="4" placeholder="Mô tả ảnh cần tạo, ví dụ: Đường phố Hà Nội ngập nước sau mưa lớn, xe máy đi chậm, trời âm u, ảnh báo chí." class="w-full p-2 rounded-lg bg-white border border-[#D9D9DE] text-xs text-[#1C1C1E] leading-relaxed custom-scroll"></textarea>
+                    <div class="flex gap-1.5">
+                        <button type="button" id="btn-ai-suggest" class="flex-1 px-2 py-1.5 rounded-lg bg-white border border-indigo-200 text-indigo-700 font-semibold">✨ AI gợi ý mô tả từ bài</button>
+                        <select id="ai-aspect" class="px-1.5 py-1.5 rounded-lg bg-white border border-[#D9D9DE] text-[11px]">
+                            <option value="frame">Theo khổ video</option>
+                            <option value="1:1">Vuông</option>
+                            <option value="16:9">Ngang</option>
+                            <option value="9:16">Dọc</option>
+                        </select>
+                    </div>
+                    <button type="button" id="btn-ai-image" class="w-full py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold disabled:opacity-50">🎨 Tạo ảnh</button>
+                    <p id="ai-status" class="text-[11px] text-[#3C3C43]"></p>
+                    <p class="text-[10px] text-[#8A8A8E] leading-relaxed">Cần key Gemini hoặc OpenAI đã bật thanh toán, khoảng 900 đồng một ảnh. Ảnh AI đặt lên video kèm nhãn "Ảnh minh hoạ AI"; xoá nhãn nếu không cần.</p>
+                </div>
+            </section>
+
+            <!-- Templates -->
+            <section data-panel="templates" class="space-y-3 text-xs" hidden>
+                <div>
+                    <p class="font-semibold text-[#3C3C43] mb-1.5">Mẫu có sẵn</p>
+                    <div id="builtin-templates" class="grid grid-cols-2 gap-1.5"></div>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <p class="font-semibold text-[#3C3C43]">Mẫu của tòa soạn</p>
+                        <button type="button" id="btn-save-template" class="px-2 py-1 rounded-lg border border-[#D9D9DE] bg-white font-semibold">＋ Lưu thành mẫu</button>
+                    </div>
+                    <div id="saved-templates" class="space-y-1"></div>
+                </div>
+                <p class="text-[11px] text-[#8A8A8E]">Áp mẫu sẽ thay các lớp đang có. Tít, nguồn tin và tiêu đề trong mẫu tự đổi theo bài này.</p>
+            </section>
+
+            <!-- Voiceover -->
+            <section data-panel="voice" class="space-y-3 text-xs" hidden>
+                <div class="p-2.5 rounded-xl bg-blue-50 border border-blue-200 space-y-1.5">
+                    <label for="select-language" class="block font-semibold text-[#3C3C43]">🌐 Ngôn ngữ video</label>
+                    <div class="flex gap-1.5">
+                        <select id="select-language" class="flex-1 px-2 py-1.5 rounded-lg bg-white border border-[#D9D9DE] text-[#1C1C1E]">
+                            {% for l in languages %}<option value="{{ l.code }}" {{ 'selected' if l.code == video_language else '' }}>{{ l.name }}</option>{% endfor %}
+                        </select>
+                        <button type="button" id="btn-ai-script" class="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold whitespace-nowrap disabled:opacity-50">✨ AI viết lời</button>
+                    </div>
+                    <p class="text-[10px] text-[#8A8A8E]">AI viết tiêu đề và lời bình từ nội dung tin. Tiêu đề đặt vào lớp "Tiêu đề chính" trên khung.</p>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="block font-semibold text-[#3C3C43]">Giọng đọc
+                        <select id="select-voice" class="mt-1 w-full px-2 py-1.5 rounded-lg bg-white border border-[#D9D9DE] font-normal text-[#1C1C1E]">
+                            {% for v in voices if v.lang == video_language %}<option value="{{ v.key }}" {{ 'selected' if v.key == default_voice else '' }}>{{ v.label }}</option>{% endfor %}
+                        </select>
+                    </label>
+                    <label class="block font-semibold text-[#3C3C43]">Tốc độ: <span id="val-voice-speed" class="font-mono text-blue-700">1.00×</span>
+                        <input type="range" id="input-voice-speed" min="0.75" max="1.35" step="0.05" value="1.0" class="mt-2 w-full accent-blue-500">
+                    </label>
+                </div>
+                <label class="block font-semibold text-[#3C3C43]">Lời bình
+                    <textarea id="input-voiceover-text" rows="6" class="mt-1 w-full p-2 rounded-lg bg-white border border-[#D9D9DE] font-normal text-[#1C1C1E] leading-relaxed custom-scroll" placeholder="Đoạn văn giọng đọc sẽ đọc...">{{ voiceover_text }}</textarea>
+                </label>
+                <div class="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-[#F2F2F7] border border-[#ECECEE]">
+                    <label class="block font-semibold text-[#3C3C43]">🗣️ Giọng đọc <span id="val-voice-vol" class="font-mono text-emerald-700">100%</span>
+                        <input type="range" id="input-voice-vol" min="0" max="1.5" step="0.05" value="1.0" class="w-full accent-emerald-500">
+                    </label>
+                    <label class="block font-semibold text-[#3C3C43]">🔊 Tiếng gốc <span id="val-orig-vol" class="font-mono text-amber-700">15%</span>
+                        <input type="range" id="input-orig-vol" min="0" max="1" step="0.05" value="0.15" class="w-full accent-amber-500">
+                    </label>
+                </div>
+                <button type="button" id="btn-voice-preview" class="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold disabled:opacity-50">🎧 Tạo giọng đọc để nghe thử</button>
+                <p id="voice-status" class="text-[11px] text-[#8A8A8E]">Chưa tạo giọng đọc: độ dài video đang ước tính theo số chữ.</p>
+            </section>
+
+            <!-- Talking MC -->
+            <section data-panel="mc" class="space-y-3 text-xs" hidden>
+                <div class="grid grid-cols-2 gap-1.5 p-1 bg-[#F2F2F7] rounded-xl border border-[#ECECEE]">
+                    <button type="button" id="btn-mode-photo" class="py-1.5 rounded-lg font-bold bg-indigo-600 text-white shadow">👤 MC ảo (ảnh)</button>
+                    <button type="button" id="btn-mode-video" class="py-1.5 rounded-lg font-bold text-[#8A8A8E]">🎬 Khớp miệng video</button>
+                </div>
+                <div id="panel-talking-photo" class="space-y-2">
+                    <p class="font-semibold text-[#3C3C43]">Chọn MC</p>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        {% for a in avatars %}
+                        <button type="button" data-avatar-id="{{ a.id }}" data-avatar-path="{{ a.rel_path }}" data-avatar-url="{{ a.media_url }}"
+                            class="avatar-card p-1.5 rounded-xl border text-center {% if loop.first %}bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500{% else %}bg-white border-[#D9D9DE]{% endif %}">
+                            <img src="{{ a.media_url }}" alt="{{ a.name }}" class="w-12 h-12 mx-auto rounded-full object-cover border border-[#C7C7CC]">
+                            <span class="block mt-1 text-[10px] font-bold text-[#1C1C1E] truncate">{{ a.name }}</span>
+                        </button>
+                        {% endfor %}
+                    </div>
+                    <input type="file" id="upload-avatar-file" accept="image/*" class="hidden">
+                    <button type="button" id="btn-upload-avatar" class="px-2.5 py-1.5 rounded-lg bg-white border border-[#D9D9DE] font-semibold">📁 Tải ảnh MC riêng...</button>
+                </div>
+                <div id="panel-video-lipsync" class="hidden p-2.5 rounded-xl bg-[#F2F2F7] border border-[#ECECEE] text-[#3C3C43]">
+                    Khớp lại khẩu hình miệng của video người dẫn theo lời bình mới. Video dùng: video bản tin đã xuất gần nhất của bài này.
+                </div>
+                <div>
+                    <p class="font-semibold text-[#3C3C43] mb-1.5">Vị trí MC trong bản tin</p>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        <button type="button" data-anchor-layout="pip_bottom_right" class="anchor-layout studio-chip px-1 py-1.5 rounded-lg border border-[#D9D9DE] bg-white font-semibold" aria-pressed="true">↘️ Góc phải</button>
+                        <button type="button" data-anchor-layout="pip_bottom_left" class="anchor-layout studio-chip px-1 py-1.5 rounded-lg border border-[#D9D9DE] bg-white font-semibold">↙️ Góc trái</button>
+                        <button type="button" data-anchor-layout="split_top_bottom" class="anchor-layout studio-chip px-1 py-1.5 rounded-lg border border-[#D9D9DE] bg-white font-semibold">⏸️ Chia đôi</button>
+                    </div>
+                </div>
+                <button type="button" id="btn-gen-lipsync" class="w-full py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-pink-600 text-white font-bold disabled:opacity-50">⚡ <span id="btn-lipsync-label">Tạo cử động khẩu hình MC</span></button>
+                <p id="lipsync-status" class="hidden text-[11px] text-indigo-700"></p>
+                <div id="anchor-result-card" class="hidden p-2.5 rounded-xl bg-[#F2F2F7] border border-indigo-300 space-y-2">
+                    <p class="font-bold text-emerald-700">✓ MC đã khớp khẩu hình <span id="anchor-duration-text" class="font-mono font-normal text-[#8A8A8E]"></span></p>
+                    <video id="anchor-preview-video" playsinline controls class="w-full max-h-48 rounded-lg bg-black"></video>
+                    <button type="button" id="btn-composite-anchor" class="w-full py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold disabled:opacity-50">➕ Lồng MC vào video vừa xuất</button>
+                </div>
+                <p class="text-[10px] text-[#8A8A8E]">Lồng MC dùng video đã xuất gần nhất: bấm 🎬 Xuất video trước, sau đó lồng MC.</p>
+            </section>
+        </div>
+
+        <!-- Centre: the frame -->
+        <div class="space-y-2 min-w-0">
+            <div id="stage-wrap" class="relative rounded-2xl bg-[#1C1C1E] flex items-center justify-center overflow-hidden h-[62vh] xl:h-[min(72vh,820px)]">
+                <div id="stage" class="relative overflow-hidden bg-black shadow-2xl">
+                    <div id="bg-backdrop" class="absolute inset-0"></div>
+                    <div id="bg-blur" class="absolute inset-0 overflow-hidden">
+                        <video id="bg-blur-video" muted playsinline preload="auto" class="absolute inset-0 w-full h-full object-cover hidden"></video>
+                        <img id="bg-blur-img" alt="" class="absolute inset-0 w-full h-full object-cover hidden">
+                    </div>
+                    <video id="bg-video" playsinline preload="auto" class="absolute max-w-none hidden"></video>
+                    <img id="bg-img" alt="" class="absolute max-w-none hidden">
+                    <canvas id="studio-canvas"></canvas>
+                    <div id="bg-drag" class="absolute inset-0 hidden cursor-move border-2 border-dashed border-amber-400"></div>
+                </div>
+                <div id="stage-loading" class="absolute inset-0 flex items-center justify-center text-xs text-white/80">Đang mở Video Studio...</div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+                <button type="button" id="btn-play" class="px-3 py-1.5 rounded-lg bg-white border border-[#D9D9DE] font-semibold text-[#1C1C1E] min-w-[86px]">▶ Phát</button>
+                <span id="time-label" class="font-mono text-[#3C3C43]">00:00.0 / 00:15.0</span>
+                <span id="duration-note" class="text-[11px] text-[#8A8A8E]"></span>
+                <span class="flex-1"></span>
+                <span class="text-[11px] text-[#8A8A8E]">Phím tắt: Space phát · Delete xoá · Ctrl+D nhân bản · mũi tên dịch</span>
+            </div>
+        </div>
+
+        <!-- Right: properties of the selected layer -->
+        <div id="props" class="glass-panel rounded-2xl border p-3 text-xs xl:max-h-[calc(100vh-150px)] overflow-y-auto custom-scroll">
+            <div id="props-empty" class="space-y-2 text-[#8A8A8E]">
+                <p class="font-semibold text-[#3C3C43]">Thuộc tính</p>
+                <p>Bấm vào một chữ, ảnh hay khối trên khung (hoặc ở dòng thời gian) để sửa nội dung, cỡ chữ, màu, thời gian hiện.</p>
+                <p>Thêm chữ ở thẻ <b>🔤 Chữ & khối</b>, thêm ảnh hay tạo ảnh AI ở thẻ <b>🏞️ Ảnh · AI</b>.</p>
+            </div>
+            <div id="props-body" hidden></div>
+        </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="glass-panel rounded-2xl border p-3">
+        <div class="flex flex-wrap items-center justify-between gap-2 text-xs mb-2">
+            <span class="font-bold text-[#1C1C1E]">⏱️ Dòng thời gian</span>
+            <span class="text-[11px] text-[#8A8A8E]">Kéo thanh màu để đổi lúc hiện, kéo hai đầu thanh để đổi độ dài. Bấm vào thước để xem tới giây đó.</span>
+        </div>
+        <div id="timeline" class="relative select-none text-[11px]"></div>
+    </div>
+</div>
+
+<script type="application/json" id="studio-config">{{ studio | tojson }}</script>
+<script>
+    window.STUDIO_VOICES = {{ voices | tojson }};
+    window.STUDIO_DEFAULT_VOICE = {{ default_voice | tojson }};
+    window.STUDIO_LAST_VIDEO = {{ (latest_video.file_path if latest_video else (source_video_item.file_path if source_video_item else '')) | tojson }};
+    window.STUDIO_FIRST_AVATAR = {{ ({'id': avatars[0].id, 'path': avatars[0].rel_path} if avatars else {}) | tojson }};
+</script>
+<script src="/static/vendor/fabric/fabric.min.js?v={{ app_version }}"></script>
+<script src="/static/js/video_studio.js?v={{ app_version }}"></script>
+{% endblock %}

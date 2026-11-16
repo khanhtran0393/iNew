@@ -1,0 +1,776 @@
+{% extends "layout.html" %}
+
+{% block title %}Đấu Nối AI - iNew{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header Section -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center space-x-2">
+                <span class="text-2xl">🤖</span>
+                <h1 class="text-xl md:text-2xl font-bold text-[#1C1C1E] tracking-tight">
+                    Đấu Nối AI: Nhiều Hãng, Nhiều Tài Khoản
+                </h1>
+            </div>
+            <p class="text-xs md:text-sm text-[#8A8A8E] mt-1">
+                Thêm tài khoản của Google Gemini, OpenAI, Claude, DeepSeek, Grok, Qwen, Mistral, OpenRouter… chỉ bằng API key,
+                rồi chọn AI nào làm việc nào ở bảng <a href="#task-routes" class="text-indigo-700 underline">Phân việc cho AI</a>.
+            </p>
+        </div>
+
+        <button type="button" onclick="scrollToForm()" class="self-start md:self-auto px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-lg shadow-blue-500/20 transition flex items-center space-x-2">
+            <span>➕ Thêm Tài Khoản Mới</span>
+        </button>
+    </div>
+
+    <!-- Stats Summary Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="glass-panel p-4 rounded-2xl flex items-center justify-between border border-[#ECECEE]">
+            <div>
+                <p class="text-xs text-[#8A8A8E] font-medium">Tổng Tài Khoản Đấu Nối</p>
+                <p class="text-2xl font-bold text-[#1C1C1E] mt-1">{{ total_keys }}</p>
+            </div>
+            <div class="h-10 w-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-lg text-blue-700">
+                🔑
+            </div>
+        </div>
+
+        <div class="glass-panel p-4 rounded-2xl flex items-center justify-between border border-[#ECECEE]">
+            <div>
+                <p class="text-xs text-[#8A8A8E] font-medium">Đang Hoạt Động (Active)</p>
+                <p class="text-2xl font-bold text-emerald-700 mt-1">{{ active_keys }} / {{ total_keys }}</p>
+            </div>
+            <div class="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-lg text-emerald-700">
+                🟢
+            </div>
+        </div>
+
+        <div class="glass-panel p-4 rounded-2xl flex items-center justify-between border border-[#ECECEE]">
+            <div>
+                <p class="text-xs text-[#8A8A8E] font-medium">Lượt Gọi AI Thành Công</p>
+                <p class="text-2xl font-bold text-cyan-700 mt-1">{{ total_calls }}</p>
+            </div>
+            <div class="h-10 w-10 rounded-xl bg-cyan-50 border border-cyan-200 flex items-center justify-center text-lg text-cyan-700">
+                ⚡
+            </div>
+        </div>
+    </div>
+
+    <!-- List of Configured Gemini Accounts -->
+    <div class="space-y-4">
+        <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-[#1C1C1E] flex items-center space-x-2">
+                <span>📋 Danh Sách Tài Khoản & Phân Công Nhiệm Vụ</span>
+            </h2>
+            <span class="text-xs text-[#8A8A8E]">Tự động điều hướng thông minh theo Chủ đề & Mục đích</span>
+        </div>
+
+        {% if keys_data %}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {% for item in keys_data %}
+            {% set k = item.obj %}
+            {% set meta = item.meta %}
+            <div class="glass-panel p-5 rounded-2xl border transition duration-200 {{ 'border-[#ECECEE] hover:border-[#D9D9DE] bg-white/70' if k.is_active else 'border-[#ECECEE] bg-[#F2F2F7] opacity-75' }}">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-center space-x-2.5">
+                        <span class="text-2xl">{{ meta.icon }}</span>
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <h3 class="text-sm font-bold text-[#1C1C1E]">{{ k.name }}</h3>
+                                {% if k.is_active %}
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    Đang Bật
+                                </span>
+                                {% else %}
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#EFEFF4] text-[#8A8A8E] border border-[#D9D9DE]">
+                                    Tạm Dừng
+                                </span>
+                                {% endif %}
+                            </div>
+                            <p class="text-[11px] text-[#8A8A8E] mt-0.5">
+                                <span class="px-1.5 py-0.5 rounded bg-[#EFEFF4] text-[#1C1C1E] border border-[#D9D9DE] font-semibold">{{ providers.get(k.provider or 'gemini', providers['custom']).name }}</span>
+                                · {{ meta.name }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-1">
+                        <!-- Toggle Form -->
+                        <form action="/settings/ai-config/{{ k.id }}/toggle" method="POST">
+                            <button type="submit" title="{{ 'Tạm dừng' if k.is_active else 'Kích hoạt' }}"
+                                class="p-1.5 rounded-lg text-xs {{ 'bg-amber-50 text-amber-700 hover:bg-amber-50' if k.is_active else 'bg-emerald-50 text-emerald-700 hover:bg-emerald-50' }} border border-[#D9D9DE] transition">
+                                {{ '⏸' if k.is_active else '▶️' }}
+                            </button>
+                        </form>
+                        <!-- Delete Form -->
+                        <form action="/settings/ai-config/{{ k.id }}/delete" method="POST" onsubmit="return confirm('Bạn có chắc muốn xóa tài khoản AI này?');">
+                            <button type="submit" title="Xóa tài khoản" class="p-1.5 rounded-lg text-xs bg-rose-50 text-rose-700 hover:bg-rose-50 border border-[#D9D9DE] transition">
+                                🗑️
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Details & Tags -->
+                <div class="mt-4 pt-3 border-t border-[#ECECEE] space-y-2 text-xs">
+                    <div class="grid grid-cols-2 gap-2 text-[11px]">
+                        <div class="p-2 rounded-xl bg-[#F2F2F7] border border-[#ECECEE]">
+                            <span class="text-[#AEAEB2] block">Mô hình AI:</span>
+                            <span class="font-mono font-bold text-indigo-700">{{ k.model }}</span>
+                        </div>
+                        <div class="p-2 rounded-xl bg-[#F2F2F7] border border-[#ECECEE]">
+                            <span class="text-[#AEAEB2] block">Khóa API:</span>
+                            <span class="font-mono text-[#3C3C43]">{{ item.masked_key }}</span>
+                        </div>
+                    </div>
+
+                    {% if k.topic %}
+                    <div class="flex items-center space-x-1.5 text-[11px] text-[#3C3C43]">
+                        <span class="text-[#AEAEB2]">Chủ đề gán cố định:</span>
+                        <span class="px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-medium">
+                            🏷️ {{ k.topic.name }}
+                        </span>
+                    </div>
+                    {% endif %}
+
+                    {% if k.custom_system_instruction %}
+                    <div class="p-2.5 rounded-xl bg-[#F2F2F7] border border-[#ECECEE] text-[11px] text-[#3C3C43] italic">
+                        <span class="text-[#AEAEB2] not-italic font-semibold">Chỉ dẫn phong cách:</span>
+                        "{{ k.custom_system_instruction }}"
+                    </div>
+                    {% endif %}
+
+                    <!-- Test Connection Box -->
+                    <div class="mt-3 flex items-center justify-between pt-2 border-t border-[#ECECEE]">
+                        <div id="test-status-{{ k.id }}" class="text-[11px]">
+                            {% if k.last_test_status == 'success' %}
+                            <span class="text-emerald-700 font-medium flex items-center space-x-1">
+                                <span>🟢</span>
+                                <span>{{ k.last_test_message or 'Kết nối hoạt động tốt' }}</span>
+                            </span>
+                            {% elif k.last_test_status == 'failed' %}
+                            <span class="text-rose-700 font-medium flex items-center space-x-1">
+                                <span>🔴</span>
+                                <span>{{ k.last_test_message or 'Lỗi kết nối' }}</span>
+                            </span>
+                            {% else %}
+                            <span class="text-[#AEAEB2] italic">Chưa kiểm tra gần đây</span>
+                            {% endif %}
+                        </div>
+
+                        <button type="button" onclick="testSavedKey({{ k.id }})" id="btn-test-{{ k.id }}"
+                            class="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-800/50 text-indigo-700 border border-indigo-700/60 font-semibold text-[11px] transition flex items-center space-x-1">
+                            <span>⚡ Thử Kết Nối</span>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center justify-between text-[10px] text-[#AEAEB2] pt-1">
+                        <span>Đã gọi: <b class="text-[#3C3C43]">{{ k.usage_count }}</b> lượt</span>
+                        <span>Ưu tiên: <b class="text-[#3C3C43]">#{{ k.priority }}</b></span>
+                        <span>Dùng gần nhất: <b class="text-[#3C3C43]">{{ k.last_used_at.strftime('%H:%M %d/%m') if k.last_used_at else 'Chưa' }}</b></span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="glass-panel p-8 rounded-2xl text-center border border-dashed border-[#ECECEE] text-[#8A8A8E]">
+            <span class="text-3xl block mb-2">🔑</span>
+            <p class="text-sm font-semibold text-[#1C1C1E]">Chưa có tài khoản AI nào</p>
+            <p class="text-xs text-[#8A8A8E] mt-1 max-w-md mx-auto">
+                Thêm ít nhất một tài khoản bên dưới (chỉ cần API key của hãng) để dùng các nút AI trong trang tin.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Which AI account does which job -->
+    <div id="task-routes" class="glass-panel p-6 rounded-2xl border border-cyan-200">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h2 class="text-base font-bold text-cyan-700">🧭 Phân việc cho AI</h2>
+            <span class="text-[11px] text-[#8A8A8E]">Để "Tự động" thì hệ thống chọn theo nhiệm vụ / chủ đề của từng tài khoản như trước.</span>
+        </div>
+        {% if keys_data %}
+        <form action="/settings/ai-routes/save" method="POST" class="space-y-2">
+            <div class="hidden md:grid grid-cols-12 gap-2 text-[10px] uppercase tracking-wider text-[#AEAEB2] px-1">
+                <span class="col-span-3">Việc</span><span class="col-span-5">AI chính · model</span><span class="col-span-4">AI dự phòng · model</span>
+            </div>
+            {% for t in tasks %}
+            {% set rs = routes.get(t.code, []) %}
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-2 items-center p-2 rounded-xl bg-[#F2F2F7] border border-[#ECECEE]">
+                <div class="md:col-span-3 text-xs text-[#1C1C1E] font-semibold">{{ t.name }}</div>
+                {% for slot in [0, 1] %}
+                {% set r = rs[slot] if rs|length > slot else none %}
+                <div class="{{ 'md:col-span-5' if slot == 0 else 'md:col-span-4' }} flex gap-1.5">
+                    <select name="{{ t.code }}__key{{ slot }}" class="flex-1 min-w-0 px-2 py-1.5 rounded-lg bg-white border border-[#D9D9DE] text-[11px] text-[#1C1C1E]">
+                        <option value="">{{ 'Tự động' if slot == 0 else 'Không dùng' }}</option>
+                        {% for item in keys_data %}
+                        {% set k = item.obj %}
+                        {% set pm = providers.get(k.provider or 'gemini', providers['custom']) %}
+                        {% if t.code != 'media_video' or pm.video %}{% if not t.code.startswith('media_') or pm.vision %}
+                        <option value="{{ k.id }}" {{ 'selected' if r and r.ai_key_id == k.id else '' }}>{{ k.name }} ({{ pm.name }}){{ '' if k.is_active else ' – đang tắt' }}</option>
+                        {% endif %}{% endif %}
+                        {% endfor %}
+                    </select>
+                    <input name="{{ t.code }}__model{{ slot }}" value="{{ r.model if r and r.model else '' }}" placeholder="model của tài khoản"
+                        class="w-32 md:w-36 px-2 py-1.5 rounded-lg bg-white border border-[#D9D9DE] text-[11px] font-mono text-[#1C1C1E] placeholder-[#AEAEB2]">
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+            <div class="flex justify-end pt-2">
+                <button type="submit" class="px-5 py-2 rounded-xl bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-semibold">💾 Lưu phân việc</button>
+            </div>
+        </form>
+        <p class="mt-2 text-[10px] text-[#AEAEB2]">Ô model để trống = dùng model đã khai báo ở tài khoản. Việc đọc video hiện chỉ Google Gemini làm được; đọc ảnh cần hãng có hỗ trợ ảnh.</p>
+        {% else %}
+        <p class="text-xs text-[#AEAEB2]">Thêm tài khoản AI trước, sau đó quay lại đây để phân việc.</p>
+        {% endif %}
+    </div>
+
+    <!-- Create New Gemini Account Form -->
+    <div id="form-container" class="glass-panel p-6 rounded-2xl border border-indigo-200 bg-gradient-to-b from-[#F2F2F7] via-[#F2F2F7] to-[#F2F2F7]">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center space-x-2">
+                <span class="text-xl">➕</span>
+                <h2 class="text-base font-bold text-[#1C1C1E]">Thêm Tài Khoản AI</h2>
+            </div>
+            <span class="text-xs px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200 font-mono">
+                {{ providers | length - 1 }} hãng + hãng khác chuẩn OpenAI
+            </span>
+        </div>
+
+        <form action="/settings/ai-config/create" method="POST" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-[#3C3C43] mb-1.5">Hãng AI *</label>
+                    <select name="provider" id="acc-provider" onchange="onProviderChanged()"
+                        class="w-full px-3.5 py-2.5 rounded-xl bg-[#F2F2F7] border border-[#D9D9DE] text-xs text-[#1C1C1E] focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        {% for code, p in providers.items() %}
+                        <option value="{{ code }}">{{ p.name }}{{ ' (đọc được ảnh + video)' if p.video else (' (đọc được ảnh)' if p.vision else '') }}</option>
+                        {% endfor %}
+                    </select>
+                    <p id="provider-help" class="mt-1 text-[10px] text-[#AEAEB2]"></p>
+                </div>
+                <div id="base-url-box" class="hidden">
+                    <label class="block text-xs font-semibold text-[#3C3C43] mb-1.5">Địa chỉ API (Base URL) *</label>
+                    <input type="url" name="base_url" id="acc-base-url" placeholder="VD: https://api.together.xyz/v1 hoặc http://localhost:11434/v1"
+                        class="w-full px-3.5 py-2.5 rounded-xl bg-[#F2F2F7] border border-[#D9D9DE] text-xs text-[#1C1C1E] font-mono placeholder-[#AEAEB2] focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Name -->
+                <div>
+                    <label class="block text-xs font-semibold text-[#3C3C43] mb-1.5">Tên Gợi Nhớ Cho Tài Khoản *</label>
+                    <input type="text" name="name" id="acc-name" required
+                        placeholder="VD: Gemini 1 - Làm video khoa học, hoặc Claude - Dịch bài"
+                        class="w-full px-3.5 py-2.5 rounded-xl bg-[#F2F2F7] border border-[#D9D9DE] text-xs text-[#1C1C1E] placeholder-[#AEAEB2] focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <!-- Model Selection -->
+                <div>
+                    <label class="block text-xs font-semibold text-[#3C3C43] mb-1.5">Phiên Bản Mô Hình AI *</label>
+                    <div class="flex gap-2">
+                        <input name="model" id="acc-model" list="acc-models" value="{{ providers['gemini']['models'][0] }}" required
+                            class="flex-1 px-3.5 py-2.5 rounded-xl bg-[#F2F2F7] border border-[#D9D9DE] text-xs text-[#1C1C1E] font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button type="button" onclick="loadModels()" id="btn-load-models"
+                            class="px-3 py-2.5 rounded-xl bg-[#EFEFF4] hover:bg-[#E5E5EA] text-[#1C1C1E] border border-[#D9D9DE] text-[11px] font-semibold transition flex-shrink-0">📋 Lấy danh sách</button>
+                    </div>
+                    <datalist id="acc-models"></datalist>
+                    <p id="models-help" class="mt-1 text-[10px] text-[#AEAEB2]">Chọn gợi ý, gõ tên model, hoặc dán API key rồi bấm "Lấy danh sách" để xem model mà key này dùng được.</p>
+                </div>
+            </div>
+
+            <!-- API Key with Live Direct Test Button -->
+            <div>
+                <label class="block text-xs font-semibold text-[#3C3C43] mb-1.5">API Key * <a id="key-link" href="#" target="_blank" rel="noopener" class="ml-1 text-indigo-700 underline font-normal">lấy key ở đâu?</a></label>
+                <div class="flex gap-2">
+                    <input type="password" name="api_key" id="acc-api-key" required
+                        placeholder="Dán API key của hãng vào đây"
+                        class="flex-1 px-3.5 py-2.5 rounded-xl bg-[#F2F2F7] border border-[#D9D9DE] text-xs text-[#1C1C1E] font-mono placeholder-[#AEAEB2] focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button type="button" onclick="testDirectApiKey()" id="btn-test-direct"
+                        class="px-4 py-2.5 rounded-xl bg-[#EFEFF4] hover:bg-[#E5E5EA] text-[#1C1C1E] border border-[#D9D9DE] text-xs font-semibold transition flex items-center space-x-1 flex-shrink-0">
+                        <span>⚡ Kiểm Tra Ngay</span>
+                    </button>
+                </div>
+                <div id="direct-test-result" class="hidden mt-2 p-2.5 rounded-xl text-xs"></div>
+            </div>
+
+            <!-- Purpose / Task Assignment -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-[#3C3C43] mb-1.5">Phân Công Nhiệm Vụ Chuyên Biệt *</label>
+                    <select name="purpose" id="acc-purpose" onchange="onPurposeChanged()"
+                        class="w-full px-3.5 py-2.5 rounded-xl bg-[#F2F2F7] border border-[#D9D9DE] text-xs text-[#1C1C1E] focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        {% for p in purposes %}
+                        <option value="{{ p.code }}" data-instruction="{{ p.suggested_instruction }}">
+                            {{ p.icon }} {{ p.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <p class="text-[11px] text-[#8A8A8E] mt-1" id="purpose-desc">
+                        Chuyên xử lý tin AI, khám phá vũ trụ, khoa học tự nhiên, thiết bị công nghệ mới
+                    </p>
+                </div>
+
+                <!-- Specific Topic Mapping (Optional) -->
+                <div>
+                    <label class="block text-xs font-semibold text-[#3C3C43] mb-1.5">Gắn Cố Định Theo Chủ Đề Tin Tức (Tùy chọn)</label>
+                    <select name="topic_id"
+                        class="w-full px-3.5 py-2.5 rounded-xl bg-[#F2F2F7] border border-[#D9D9DE] text-xs text-[#1C1C1E] focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">-- Mọi chủ đề tương thích với nhiệm vụ --</option>
+                        {% for t in topics %}
+                        <option value="{{ t.id }}">🏷️ {{ t.name }} ({{ t.slug }})</option>
+                        {% endfor %}
+                    </select>
+                    <p class="text-[11px] text-[#AEAEB2] mt-1">
+                        Nếu chọn, chỉ các bài viết thuộc chủ đề này mới gọi qua tài khoản này.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Custom System Instruction -->
+            <div>
+                <div class="flex items-center justify-between mb-1.5">
+                    <label class="text-xs font-semibold text-[#3C3C43]">
+                        Chỉ Dẫn Phong Cách / Kịch Bản Riêng Cho Tài Khoản Này (System Instruction)
+                    </label>
+                    <button type="button" onclick="fillSuggestedInstruction()" class="text-[11px] text-indigo-700 hover:underline">
+                        🔄 Nạp mẫu gợi ý cho nhiệm vụ này
+                    </button>
+                </div>
+                <textarea name="custom_system_instruction" id="acc-instruction" rows="3"
+                    placeholder="VD: Bạn là đạo diễn kịch bản video khoa học công nghệ, hãy giải thích các thuật ngữ sinh động, cuốn hút..."
+                    class="w-full p-3 rounded-xl bg-[#F2F2F7] border border-[#D9D9DE] text-xs text-[#1C1C1E] placeholder-[#AEAEB2] focus:outline-none focus:ring-2 focus:ring-indigo-500 custom-scroll leading-relaxed"></textarea>
+            </div>
+
+            <!-- Priority & Active Checkbox -->
+            <div class="flex items-center justify-between pt-2">
+                <div class="flex items-center space-x-4">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" name="is_active" value="true" checked class="rounded bg-[#F2F2F7] border-[#D9D9DE] text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                        <span class="text-xs font-semibold text-[#1C1C1E]">Kích hoạt tài khoản ngay</span>
+                    </label>
+
+                    <div class="flex items-center space-x-2">
+                        <label class="text-xs text-[#8A8A8E]">Ưu tiên:</label>
+                        <input type="number" name="priority" value="1" min="1" max="10"
+                            class="w-16 px-2 py-1 rounded-lg bg-[#F2F2F7] border border-[#D9D9DE] text-xs text-center text-[#1C1C1E]">
+                    </div>
+                </div>
+
+                <button type="submit" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/30 transition flex items-center space-x-2">
+                    <span>💾 Lưu Tài Khoản AI</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="glass-panel p-5 rounded-2xl space-y-3">
+        <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-indigo-700">📊 Lượt dùng AI hôm nay</h2>
+            <span class="text-xs text-[#8A8A8E]">{{ ai_usage.total }} / {{ ai_usage.limit_total }} lượt toàn tòa soạn · tối đa {{ ai_usage.limit_user }} lượt/người</span>
+        </div>
+        {% if ai_usage.rows %}
+        <table class="w-full text-xs">
+            <thead><tr class="text-[#8A8A8E] border-b border-[#ECECEE]"><th class="text-left py-2">Nhân viên</th><th class="text-right">Lượt</th><th class="text-right">Lỗi</th><th class="text-right">Ký tự xử lý</th></tr></thead>
+            <tbody class="divide-y divide-[#E5E5EA]/60">
+                {% for r in ai_usage.rows %}
+                <tr><td class="py-1.5 text-[#1C1C1E]">{{ r.name }}</td><td class="text-right">{{ r.calls }}</td><td class="text-right {{ 'text-rose-700' if r.failed else '' }}">{{ r.failed }}</td><td class="text-right text-[#8A8A8E]">{{ '{:,}'.format(r.chars) }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-xs text-[#AEAEB2]">Chưa có lượt dùng AI nào hôm nay.</p>
+        {% endif %}
+    </div>
+
+    <!-- Automatic draft video creation (never publishes) -->
+    <div class="glass-panel p-6 rounded-2xl border border-amber-200 bg-gradient-to-b from-amber-950/20 via-[#F2F2F7] to-[#F2F2F7] space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#ECECEE] pb-3">
+            <div class="flex items-center space-x-2.5">
+                <span class="text-2xl">🎬</span>
+                <div>
+                    <h2 class="text-base font-bold text-amber-700">Tự Động Tạo Video Từ Tin Thu Thập</h2>
+                    <p class="text-xs text-[#8A8A8E]">
+                        Khi bật: tin mới (không trùng) sẽ được tự tải media, viết kịch bản AI, lồng tiếng và dựng video 9:16.
+                        Video chỉ được lưu vào <a href="/videos?tab=generated" class="text-cyan-700 underline">Kho video</a> làm bản nháp —
+                        <b>hệ thống không bao giờ tự đăng</b>. Muốn đăng, bài phải được Admin duyệt rồi người bấm đăng thủ công.
+                    </p>
+                </div>
+            </div>
+            <span class="text-[10px] px-2.5 py-1 rounded-full {{ 'bg-emerald-100 text-emerald-700 border border-emerald-700' if auto_video_config.enabled else 'bg-[#EFEFF4] text-[#8A8A8E] border border-[#D9D9DE]' }} font-bold uppercase tracking-wider self-start sm:self-auto">
+                {{ '● Đang bật' if auto_video_config.enabled else '○ Đang tắt' }}
+            </span>
+        </div>
+
+        <form action="/settings/auto-video/save" method="POST" class="space-y-3 p-4 rounded-xl bg-[#F2F2F7] border border-[#ECECEE]">
+            <label class="flex items-center space-x-3 cursor-pointer">
+                <input type="checkbox" name="enabled" value="true" {{ 'checked' if auto_video_config.enabled else '' }}
+                    class="rounded bg-white border-[#D9D9DE] text-amber-500 h-5 w-5">
+                <span class="text-sm font-bold text-[#1C1C1E]">Bật tự động tạo video nháp</span>
+            </label>
+            <label class="flex items-center space-x-3 cursor-pointer">
+                <input type="checkbox" name="only_with_media" value="true" {{ 'checked' if auto_video_config.only_with_media else '' }}
+                    class="rounded bg-white border-[#D9D9DE] text-amber-500 h-5 w-5">
+                <span class="text-sm text-[#1C1C1E]">Chỉ tạo cho tin có ảnh/video gốc</span>
+            </label>
+            <label class="flex items-center gap-3 text-sm text-[#1C1C1E]">
+                <span>Tối đa mỗi giờ:</span>
+                <input type="number" name="max_per_hour" min="0" max="60" value="{{ auto_video_config.max_per_hour }}"
+                    class="w-20 px-2 py-1 rounded-lg bg-white border border-[#D9D9DE] text-[#1C1C1E]">
+                <span class="text-[11px] text-[#8A8A8E]">(mỗi video tốn 1 lượt gọi AI và vài phút CPU)</span>
+            </label>
+            <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-bold text-xs">
+                💾 Lưu cài đặt
+            </button>
+        </form>
+    </div>
+
+    <!-- Multi-Platform Publishing Targets (Telegram Channels, YouTube, Facebook) -->
+    <div class="glass-panel p-6 rounded-2xl border border-emerald-200 bg-gradient-to-b from-emerald-950/20 via-[#F2F2F7] to-[#F2F2F7] space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#ECECEE] pb-4">
+            <div class="flex items-center space-x-2.5">
+                <span class="text-2xl">📢</span>
+                <div>
+                    <h2 class="text-base font-bold text-emerald-700">
+                        Đấu Nối Kênh Xuất Bản Ngoại Vi (Telegram, YouTube, Fanpage)
+                    </h2>
+                    <p class="text-xs text-[#8A8A8E]">
+                        Cấu hình các kênh Telegram, kênh YouTube Shorts hoặc Trang Facebook để hệ thống tự động đẩy video sau khi remix.
+                    </p>
+                </div>
+            </div>
+            <span class="text-[10px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold uppercase tracking-wider self-start sm:self-auto">
+                ⚡ Omnichannel
+            </span>
+        </div>
+
+        <!-- Targets List -->
+        <div class="space-y-3">
+            <h3 class="text-xs font-bold text-[#3C3C43] uppercase tracking-wider">Danh Sách Kênh Đã Kết Nối ({{ publish_targets|length }})</h3>
+            {% if publish_targets %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {% for t in publish_targets %}
+                <div class="p-4 rounded-xl bg-[#F2F2F7] border transition {{ 'border-emerald-200 bg-emerald-50' if t.is_active else 'border-[#ECECEE] opacity-60' }} flex flex-col justify-between space-y-3">
+                    <div>
+                        <div class="flex items-center justify-between">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {{ 'bg-blue-50 text-blue-700 border border-blue-700/60' if t.platform == 'telegram' else ('bg-rose-50 text-rose-700 border border-rose-700/60' if t.platform == 'youtube' else 'bg-indigo-50 text-indigo-700 border border-indigo-700/60') }}">
+                                {% if t.platform == 'telegram' %}📢 Telegram{% elif t.platform == 'youtube' %}🔴 YouTube{% elif t.platform == 'facebook' %}🔵 Facebook{% else %}🌐 Khác{% endif %}
+                            </span>
+                            <span class="text-[10px] font-semibold {{ 'text-emerald-700' if t.is_active else 'text-[#AEAEB2]' }}">
+                                {{ '● Đang bật' if t.is_active else '○ Đang tắt' }}
+                            </span>
+                        </div>
+                        <h4 class="text-sm font-bold text-[#1C1C1E] mt-2 truncate">{{ t.name }}</h4>
+                        <div class="text-xs text-[#8A8A8E] font-mono mt-0.5 truncate">
+                            ID: <span class="text-[#3C3C43]">{{ t.target_id }}</span>
+                        </div>
+                        <div class="text-[10px] text-[#AEAEB2] mt-1 flex items-center space-x-1">
+                            <span>🔒 Token:</span>
+                            <span class="font-mono text-emerald-500/80">{{ 'Đã mã hóa AES-256' if t.access_token else 'Dùng Token mặc định hệ thống' }}</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-end space-x-2 pt-2 border-t border-[#ECECEE] text-xs">
+                        <form action="/settings/publish-targets/{{ t.id }}/toggle" method="POST">
+                            <button type="submit" class="px-2.5 py-1 rounded-lg bg-[#EFEFF4] hover:bg-[#E5E5EA] text-[#3C3C43] text-[11px] font-medium transition">
+                                {{ 'Tắt' if t.is_active else 'Bật' }}
+                            </button>
+                        </form>
+                        <form action="/settings/publish-targets/{{ t.id }}/delete" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa kênh xuất bản này?');">
+                            <button type="submit" class="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-medium transition">
+                                Xóa
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="p-4 rounded-xl bg-[#F2F2F7] border border-dashed border-[#ECECEE] text-center text-xs text-[#8A8A8E]">
+                Chưa có kênh nào được cấu hình. Hãy điền biểu mẫu dưới đây để thêm Kênh Telegram, Kênh YouTube hoặc Fanpage Facebook của bạn.
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Add New Target Form -->
+        <div class="pt-4 border-t border-[#ECECEE]">
+            <h3 class="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-3">➕ Thêm Kênh Xuất Bản Mới</h3>
+            <form action="/settings/publish-targets/create" method="POST" class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-[#3C3C43] mb-1">Tên Kênh Gợi Nhớ *</label>
+                        <input type="text" name="name" required placeholder="VD: Kênh Tin Nóng Telegram 24/7"
+                            class="w-full px-3 py-2 rounded-xl bg-[#F2F2F7] border border-[#D9D9DE] text-xs text-[#1C1C1E] placeholder-[#AEAEB2] focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-[#3C3C43] mb-1">Nền Tảng Đăng *</label>
+                        <select name="platform" id="pub-platform" onchange="updateTargetHelp()"
+                            class="w-full px-3 py-2 rounded-xl bg-[#F2F2F7] border border-[#D9D9DE] text-xs text-[#1C1C1E] focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <option value="telegram" selected>📢 Kênh / Nhóm Telegram</option>
+                            <option value="youtube">🔴 Kênh YouTube Shorts</option>
+                            <option value="facebook">🔵 Trang Facebook (Fanpage)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-[#3C3C43] mb-1" id="lbl-target-id">Username / Chat ID *</label>
+                        <input type="text" name="target_id" id="pub-target-id" required placeholder="@channel_name hoặc -100123456789"
+                            class="w-full px-3 py-2 rounded-xl bg-[#F2F2F7] border border-[#D9D9DE] text-xs text-[#1C1C1E] font-mono placeholder-[#AEAEB2] focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+                    <div class="sm:col-span-3">
+                        <label class="block text-xs font-semibold text-[#3C3C43] mb-1" id="lbl-token">
+                            Bot Token / API Key Riêng Cho Kênh Này (Tùy chọn)
+                        </label>
+                        <input type="password" name="access_token" placeholder="Để trống nếu dùng Bot Token hệ thống mặc định trong cài đặt..."
+                            class="w-full px-3 py-2 rounded-xl bg-[#F2F2F7] border border-[#D9D9DE] text-xs text-[#1C1C1E] font-mono placeholder-[#AEAEB2] focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <p class="text-[10px] text-[#8A8A8E] mt-1" id="pub-help-text">
+                            Với Telegram: Nhập <code>@ten_kenh</code> hoặc Chat ID (bắt đầu bằng <code>-100...</code>). Đảm bảo Bot đã được thêm làm Quản trị viên (Admin) của Kênh có quyền Đăng bài.
+                        </p>
+                    </div>
+
+                    <div class="flex items-center justify-end">
+                        <button type="submit" class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/30 transition flex items-center justify-center space-x-1.5">
+                            <span>➕ Lưu Kênh Đăng</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Instructions Guide Card -->
+    <div class="glass-panel p-5 rounded-2xl border border-[#ECECEE] text-xs text-[#3C3C43] space-y-3">
+        <h3 class="text-sm font-bold text-amber-700 flex items-center space-x-2">
+            <span>💡 Cách Lấy API Key Google Gemini</span>
+        </h3>
+        <ol class="list-decimal list-inside space-y-1.5 text-[#8A8A8E] leading-relaxed">
+            <li>Truy cập <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="text-blue-700 underline font-semibold">Google AI Studio (aistudio.google.com/apikey)</a> và đăng nhập bằng tài khoản Google của tòa soạn.</li>
+            <li>Bấm <b>"Create API key"</b> rồi copy mã khóa.</li>
+            <li>Dán vào form trên, giữ model <code>gemini-3.8-flash</code> (có gói miễn phí), bấm <b>⚡ Kiểm Tra Ngay</b> rồi lưu.</li>
+            <li>Gói miễn phí có giới hạn số lượt mỗi phút và mỗi ngày, tính riêng cho từng model. Tòa soạn dùng nhiều thì bật thanh toán (billing) cho dự án của key trong AI Studio: hạn mức cao hơn và dùng được model Pro.</li>
+            <li>Nên thêm một tài khoản của hãng khác (ví dụ DeepSeek, OpenAI hoặc Claude) làm dự phòng: khi một hãng quá tải hay hết hạn mức, iNew tự chuyển sang tài khoản tiếp theo.</li>
+        </ol>
+    </div>
+</div>
+
+<script>
+const purposesData = {{ purposes | tojson }};
+
+const providersData = {{ providers | tojson }};
+
+function escHtml(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+}
+
+function onProviderChanged() {
+    const code = document.getElementById('acc-provider').value;
+    const p = providersData[code] || providersData.custom;
+    document.getElementById('base-url-box').classList.toggle('hidden', code !== 'custom');
+    document.getElementById('acc-base-url').required = code === 'custom';
+    const list = document.getElementById('acc-models');
+    list.innerHTML = (p.models || []).map(m => `<option value="${escHtml(m)}"></option>`).join('');
+    const model = document.getElementById('acc-model');
+    if (!model.dataset.touched) model.value = (p.models || [''])[0] || '';
+    const link = document.getElementById('key-link');
+    link.href = p.key_url || '#';
+    link.classList.toggle('hidden', !p.key_url);
+    document.getElementById('acc-api-key').placeholder = 'Dán API key của ' + p.name + (p.key_hint ? ' (dạng ' + p.key_hint + ')' : '');
+    document.getElementById('provider-help').textContent =
+        p.video ? 'Làm được mọi việc, kể cả đọc ảnh và video.' :
+        p.vision ? 'Làm được việc chữ và đọc ảnh (không đọc video).' : 'Chỉ làm việc chữ (dịch, viết bài, kịch bản).';
+}
+
+async function loadModels() {
+    const btn = document.getElementById('btn-load-models');
+    const help = document.getElementById('models-help');
+    const key = document.getElementById('acc-api-key').value.trim();
+    if (!key) { alert('Dán API key trước để lấy danh sách model.'); return; }
+    btn.disabled = true;
+    help.textContent = 'Đang hỏi hãng AI...';
+    try {
+        const res = await fetch('/settings/api/ai-models', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({provider: document.getElementById('acc-provider').value, api_key: key,
+                                  base_url: document.getElementById('acc-base-url').value.trim()})
+        });
+        const data = await res.json();
+        if (!data.success) { help.textContent = '✗ ' + (data.error || 'Không lấy được danh sách'); return; }
+        document.getElementById('acc-models').innerHTML = data.models.map(m => `<option value="${escHtml(m)}"></option>`).join('');
+        help.textContent = `✓ Key này dùng được ${data.models.length} model. Bấm vào ô model để chọn.`;
+    } catch (e) {
+        help.textContent = '✗ Lỗi kết nối: ' + e;
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('acc-model').addEventListener('input', e => { e.target.dataset.touched = '1'; });
+    onProviderChanged();
+});
+
+function onPurposeChanged() {
+    const sel = document.getElementById('acc-purpose');
+    const desc = document.getElementById('purpose-desc');
+    const opt = sel.options[sel.selectedIndex];
+    const code = opt.value;
+    
+    const found = purposesData.find(p => p.code === code);
+    if (found) {
+        desc.innerText = found.desc;
+        const nameInput = document.getElementById('acc-name');
+        const vendor = (providersData[document.getElementById('acc-provider').value] || providersData.custom).name;
+        if (!nameInput.value || nameInput.value.startsWith('Tài khoản ')) {
+            nameInput.value = 'Tài khoản ' + vendor + ' - ' + found.name;
+        }
+    }
+}
+
+function fillSuggestedInstruction() {
+    const sel = document.getElementById('acc-purpose');
+    const opt = sel.options[sel.selectedIndex];
+    const instruction = opt.getAttribute('data-instruction') || '';
+    document.getElementById('acc-instruction').value = instruction;
+}
+
+function scrollToForm() {
+    document.getElementById('form-container').scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('acc-name').focus();
+}
+
+async function testDirectApiKey() {
+    const key = document.getElementById('acc-api-key').value.trim();
+    const model = document.getElementById('acc-model').value;
+    const resBox = document.getElementById('direct-test-result');
+    const btn = document.getElementById('btn-test-direct');
+
+    if (!key) {
+        alert('Vui lòng nhập API Key trước khi thử nghiệm.');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳ Đang kiểm tra...</span>';
+    resBox.classList.remove('hidden');
+    resBox.className = 'mt-2 p-2.5 rounded-xl text-xs bg-white border border-[#D9D9DE] text-[#3C3C43]';
+    resBox.innerText = 'Đang gửi tín hiệu kiểm tra tới hãng AI...';
+
+    try {
+        const response = await fetch('/settings/api/ai-keys/test-direct', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ api_key: key, model: model, provider: document.getElementById('acc-provider').value,
+                                   base_url: document.getElementById('acc-base-url').value.trim() })
+        });
+        const data = await response.json();
+        if (data.success) {
+            resBox.className = 'mt-2 p-2.5 rounded-xl text-xs bg-emerald-50 border border-emerald-700 text-emerald-700 font-medium';
+            resBox.innerText = `✓ ${data.message} (Độ trễ: ${data.latency_ms}ms)`;
+        } else if (data.key_ok) {
+            // The key works; only the model is retired or not granted. Offer the models this key can use.
+            document.getElementById('acc-models').innerHTML = (data.models || []).map(m => `<option value="${escHtml(m)}"></option>`).join('');
+            document.getElementById('models-help').textContent = `✓ Key này dùng được ${(data.models || []).length} model. Bấm vào ô model để chọn.`;
+            resBox.className = 'mt-2 p-2.5 rounded-xl text-xs bg-amber-50 border border-amber-700 text-amber-700';
+            resBox.innerText = `⚠ ${data.message}`;
+            if (data.suggested_model) {
+                const use = document.createElement('button');
+                use.type = 'button';
+                use.className = 'ml-2 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold';
+                use.textContent = `Dùng ${data.suggested_model} và kiểm tra lại`;
+                use.onclick = () => {
+                    const model = document.getElementById('acc-model');
+                    model.value = data.suggested_model;
+                    model.dataset.touched = '1';
+                    testDirectApiKey();
+                };
+                resBox.appendChild(use);
+            }
+        } else {
+            resBox.className = 'mt-2 p-2.5 rounded-xl text-xs bg-rose-50 border border-rose-700 text-rose-700';
+            resBox.innerText = `✗ Lỗi: ${data.message || data.error}`;
+        }
+    } catch (e) {
+        resBox.className = 'mt-2 p-2.5 rounded-xl text-xs bg-rose-50 border border-rose-700 text-rose-700';
+        resBox.innerText = `✗ Lỗi kết nối: ${e}`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>⚡ Kiểm Tra Ngay</span>';
+    }
+}
+
+async function testSavedKey(keyId) {
+    const btn = document.getElementById(`btn-test-${keyId}`);
+    const statusBox = document.getElementById(`test-status-${keyId}`);
+
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳ Đang test...</span>';
+
+    try {
+        const response = await fetch(`/settings/api/ai-keys/${keyId}/test`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+        const data = await response.json();
+        if (data.success) {
+            statusBox.innerHTML = `
+                <span class="text-emerald-700 font-medium flex items-center space-x-1">
+                    <span>🟢</span>
+                    <span>Thành công (${data.latency_ms}ms)</span>
+                </span>
+            `;
+        } else {
+            statusBox.innerHTML = `
+                <span class="text-rose-700 font-medium flex items-center space-x-1">
+                    <span>🔴</span>
+                    <span>${escHtml(data.message || 'Lỗi kết nối')}</span>
+                </span>
+            `;
+        }
+    } catch (e) {
+        statusBox.innerHTML = `
+            <span class="text-rose-700 font-medium">🔴 Lỗi: ${escHtml(e)}</span>
+        `;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>⚡ Thử Kết Nối</span>';
+    }
+}
+
+function updateTargetHelp() {
+    const p = document.getElementById('pub-platform').value;
+    const lblId = document.getElementById('lbl-target-id');
+    const inputId = document.getElementById('pub-target-id');
+    const lblToken = document.getElementById('lbl-token');
+    const help = document.getElementById('pub-help-text');
+
+    if (p === 'telegram') {
+        lblId.innerText = 'Username / Chat ID *';
+        inputId.placeholder = '@channel_name hoặc -100123456789';
+        lblToken.innerText = 'Bot Token Riêng Cho Kênh Này (Tùy chọn)';
+        help.innerHTML = 'Với Telegram: Nhập <code>@ten_kenh</code> hoặc Chat ID (bắt đầu bằng <code>-100...</code>). Đảm bảo Bot đã được thêm làm Quản trị viên (Admin) của Kênh có quyền Đăng bài.';
+    } else if (p === 'youtube') {
+        lblId.innerText = 'YouTube Channel ID / Playlist *';
+        inputId.placeholder = 'UC_x0xxxxxx';
+        lblToken.innerText = 'Google OAuth2 / YouTube API Token';
+        help.innerHTML = 'Với YouTube: Đăng nhập Google Developer Console, tạo OAuth2 Token hoặc API Key với scope <code>youtube.upload</code>.';
+    } else if (p === 'facebook') {
+        lblId.innerText = 'Facebook Page ID *';
+        inputId.placeholder = '109283746501928';
+        lblToken.innerText = 'Page Access Token *';
+        help.innerHTML = 'Với Facebook: Nhập Page ID và Page Access Token (có quyền <code>pages_manage_posts</code> và <code>pages_read_engagement</code>).';
+    }
+}
+
+// Initial setup
+document.addEventListener('DOMContentLoaded', () => {
+    fillSuggestedInstruction();
+});
+</script>
+{% endblock %}

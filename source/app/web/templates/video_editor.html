@@ -1,0 +1,1056 @@
+{% extends "layout.html" %}
+
+{% block title %}Biên Tập Video #{{ post.id }} — iNew Video Studio{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+    <!-- Top Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-[#ECECEE]">
+        <div>
+            <div class="flex items-center space-x-2">
+                <a href="/posts/{{ post.id }}" class="text-xs px-2.5 py-1 rounded-lg bg-white border border-[#D9D9DE] hover:bg-[#EFEFF4] text-[#3C3C43] font-semibold transition">
+                    ← Trở lại bài viết #{{ post.id }}
+                </a>
+                <span class="text-xs text-[#AEAEB2]">/</span>
+                <span class="text-xs font-semibold text-rose-700 uppercase tracking-wide">iNew Video Studio</span>
+            </div>
+            <h1 class="text-xl font-bold tracking-tight text-[#1C1C1E] mt-1.5 flex items-center gap-2">
+                <span>✂️ Xưởng Biên Tập & Dựng Video Trực Tuyến</span>
+            </h1>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <button type="button" onclick="startRenderVideo()" id="btn-render-top"
+                class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 via-red-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs shadow-lg shadow-rose-900/40 transition flex items-center space-x-2">
+                <span>🎬 Xuất Video Mới (Render)</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Workspace: 2 Columns -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Left: Real-time Video Viewport & Timeline (5 cols) -->
+        <div class="lg:col-span-5 space-y-4">
+            <div class="glass-panel p-4 rounded-2xl space-y-3">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-bold text-[#1C1C1E]">Màn Hình Xem Trước (WYSIWYG Preview)</span>
+                    <span id="aspect-indicator" class="px-2 py-0.5 rounded bg-[#EFEFF4] text-[#3C3C43] font-mono text-[11px]">9:16 Dọc</span>
+                </div>
+
+                <!-- Aspect Ratio Container -->
+                <div class="w-full flex justify-center bg-black/80 rounded-xl p-2 border border-[#ECECEE] overflow-hidden">
+                    <div id="preview-wrapper" class="relative bg-[#F2F2F7] rounded-lg overflow-hidden border border-[#D9D9DE] shadow-2xl transition-all duration-300"
+                        style="width: 280px; height: 498px; max-width: 100%;">
+                        
+                        <!-- Base Video Player -->
+                        <video id="editor-video-player" playsinline class="w-full h-full object-cover"
+                            {% if source_video_item %}src="/media/download?path={{ source_video_item.file_path | urlencode }}"
+                            {% elif latest_video %}src="/media/download?path={{ latest_video.file_path | urlencode }}"
+                            {% endif %}>
+                        </video>
+
+                        <!-- Live Graphic Overlay Mockup -->
+                        <div id="live-overlay" class="absolute inset-0 pointer-events-none flex flex-col justify-between select-none">
+                            <!-- Top Header -->
+                            <div id="overlay-header-bg" class="w-full py-2 px-3 bg-red-700/90 text-center transition-colors">
+                                <div id="overlay-header-text" class="text-xs font-black text-[#1C1C1E] tracking-wider">{{ header_text }}</div>
+                                <div id="overlay-source-text" class="text-[9px] text-red-700 font-semibold uppercase">{{ lang_labels.source }}: {{ post.source.title if post.source else 'TỔNG HỢP' }}</div>
+                            </div>
+
+                            <!-- Live Mini Anchor Preview Mockup in PIP -->
+                            <div id="live-anchor-badge" class="absolute bottom-28 right-3 w-16 h-16 rounded-full border-2 border-indigo-500 overflow-hidden shadow-xl bg-white transition-all duration-300 pointer-events-none">
+                                <img id="live-anchor-img" src="{% if avatars %}{{ avatars[0].media_url }}{% endif %}" class="w-full h-full object-cover">
+                            </div>
+
+                            <!-- Lower-Third Headline -->
+                            <div class="px-3 pb-6">
+                                <div id="overlay-card-bg" class="p-2.5 rounded-xl bg-white/70 border-2 border-red-500 shadow-xl transition-colors">
+                                    <div id="overlay-tag-text" class="text-[9px] font-bold text-red-700 mb-0.5 uppercase tracking-wider">{{ lang_labels.tag }}</div>
+                                    <div id="overlay-headline-text" class="text-[11px] font-bold text-[#1C1C1E] leading-tight line-clamp-3">
+                                        {{ hook_title or 'Tiêu đề bản tin thời sự cập nhật' }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Footer CTA -->
+                            <div id="overlay-footer-bg" class="w-full py-1 text-center bg-white/70 text-[8px] font-bold text-red-700">
+                                <span id="overlay-footer-text">{{ lang_labels.footer }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Video Controls & Timeline Trimming -->
+                <div class="space-y-2.5 pt-2 border-t border-[#ECECEE]">
+                    <div class="flex items-center justify-between text-xs">
+                        <button type="button" onclick="togglePlayPreview()" id="btn-play-pause"
+                            class="px-3 py-1 rounded-lg bg-[#EFEFF4] hover:bg-[#E5E5EA] text-[#1C1C1E] font-semibold flex items-center space-x-1">
+                            <span id="play-icon">▶</span> <span id="play-text">Phát</span>
+                        </button>
+                        <span id="time-display" class="font-mono text-[#3C3C43] text-xs">00:00 / 00:00</span>
+                    </div>
+
+                    <!-- Trimming Sliders -->
+                    <div class="space-y-1.5 p-2.5 rounded-xl bg-[#F2F2F7] border border-[#ECECEE] text-xs">
+                        <div class="flex items-center justify-between text-[11px] text-[#8A8A8E]">
+                            <span>✂️ Cắt Thời Lượng (Trimming):</span>
+                            <span id="trim-duration-badge" class="font-mono text-amber-700 font-semibold">Đoạn chọn: 0.0s</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[10px] text-[#8A8A8E]">Bắt đầu (giây):</label>
+                                <div class="flex items-center space-x-1 mt-0.5">
+                                    <input type="number" id="trim-start" min="0" step="0.5" value="0.0" onchange="updateTrimTimes()"
+                                        class="w-full px-2 py-1 rounded bg-white border border-[#D9D9DE] text-[#1C1C1E] text-xs font-mono">
+                                    <button type="button" onclick="setTrimCurrent('start')" title="Lấy mốc phát hiện tại"
+                                        class="px-2 py-1 rounded bg-[#EFEFF4] text-[10px] text-[#3C3C43] hover:bg-[#E5E5EA]">⏱</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-[#8A8A8E]">Kết thúc (giây):</label>
+                                <div class="flex items-center space-x-1 mt-0.5">
+                                    <input type="number" id="trim-end" min="0" step="0.5" value="0.0" onchange="updateTrimTimes()"
+                                        class="w-full px-2 py-1 rounded bg-white border border-[#D9D9DE] text-[#1C1C1E] text-xs font-mono">
+                                    <button type="button" onclick="setTrimCurrent('end')" title="Lấy mốc phát hiện tại"
+                                        class="px-2 py-1 rounded bg-[#EFEFF4] text-[10px] text-[#3C3C43] hover:bg-[#E5E5EA]">⏱</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Download Rendered Video Box (Appears after render) -->
+            <div id="render-result-box" class="hidden glass-panel p-4 rounded-2xl border-emerald-500/50 bg-emerald-50 space-y-3">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-bold text-emerald-700 flex items-center space-x-1">
+                        <span>✅</span> <span>Video Đã Render Thành Công!</span>
+                    </span>
+                    <span id="rendered-duration" class="font-mono text-[#8A8A8E] text-[11px]"></span>
+                </div>
+                <div class="flex flex-wrap gap-2 pt-1">
+                    <a id="btn-download-rendered" href="#" download
+                        class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/30 transition flex items-center space-x-1.5">
+                        <span>⬇️ Tải Video MP4 Về Máy</span>
+                    </a>
+                    <a href="/videos?tab=generated"
+                        class="px-3 py-2 rounded-xl bg-[#EFEFF4] hover:bg-[#E5E5EA] text-[#1C1C1E] text-xs font-semibold">
+                        📂 Xem Kho Video
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Studio Controls (7 cols) -->
+        <div class="lg:col-span-7 space-y-4">
+
+            <!-- Step 1: Aspect Ratio & Graphic Branding Theme -->
+            <div class="glass-panel p-4 rounded-2xl space-y-3">
+                <h3 class="text-xs font-bold text-[#1C1C1E] uppercase tracking-wide flex items-center space-x-1.5">
+                    <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                    <span>1. Định Dạng & Nhận Diện Khung Hình</span>
+                </h3>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-[#3C3C43] mb-1.5">Tỉ lệ khung hình (Aspect Ratio):</label>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <button type="button" onclick="setAspectRatio('9:16')" id="btn-ratio-9-16"
+                                class="px-3 py-2 rounded-xl border text-xs font-bold transition bg-blue-600 border-blue-500 text-white shadow">
+                                9:16 Dọc
+                                <span class="block text-[10px] font-normal opacity-80">TikTok/Reels</span>
+                            </button>
+                            <button type="button" onclick="setAspectRatio('16:9')" id="btn-ratio-16-9"
+                                class="px-3 py-2 rounded-xl border text-xs font-bold transition bg-white border-[#D9D9DE] text-[#3C3C43] hover:bg-[#EFEFF4]">
+                                16:9 Ngang
+                                <span class="block text-[10px] font-normal opacity-80">YouTube/TV</span>
+                            </button>
+                            <button type="button" onclick="setAspectRatio('1:1')" id="btn-ratio-1-1"
+                                class="px-3 py-2 rounded-xl border text-xs font-bold transition bg-white border-[#D9D9DE] text-[#3C3C43] hover:bg-[#EFEFF4]">
+                                1:1 Vuông
+                                <span class="block text-[10px] font-normal opacity-80">Feed/Post</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-[#3C3C43] mb-1.5">Tông màu nhận diện (Theme):</label>
+                        <div class="grid grid-cols-4 gap-1.5">
+                            <button type="button" onclick="setTheme('red')" id="btn-theme-red"
+                                class="p-2 rounded-xl border text-center text-xs font-bold transition bg-red-50 border-red-500 text-red-700 ring-2 ring-red-500">
+                                🔴 Đỏ
+                                <span class="block text-[9px] font-normal text-[#8A8A8E]">Nóng</span>
+                            </button>
+                            <button type="button" onclick="setTheme('blue')" id="btn-theme-blue"
+                                class="p-2 rounded-xl border text-center text-xs font-bold transition bg-white border-[#D9D9DE] text-[#3C3C43] hover:border-blue-500">
+                                🔵 Xanh
+                                <span class="block text-[9px] font-normal text-[#8A8A8E]">Sự kiện</span>
+                            </button>
+                            <button type="button" onclick="setTheme('gold')" id="btn-theme-gold"
+                                class="p-2 rounded-xl border text-center text-xs font-bold transition bg-white border-[#D9D9DE] text-[#3C3C43] hover:border-amber-500">
+                                🟡 Vàng
+                                <span class="block text-[9px] font-normal text-[#8A8A8E]">Tiêu điểm</span>
+                            </button>
+                            <button type="button" onclick="setTheme('dark')" id="btn-theme-dark"
+                                class="p-2 rounded-xl border text-center text-xs font-bold transition bg-white border-[#D9D9DE] text-[#3C3C43] hover:border-[#C7C7CC]">
+                                ⚫ Đen
+                                <span class="block text-[9px] font-normal text-[#8A8A8E]">Tối giản</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Headlines & Overlay Text -->
+            <div class="glass-panel p-4 rounded-2xl space-y-3">
+                <h3 class="text-xs font-bold text-[#1C1C1E] uppercase tracking-wide flex items-center space-x-1.5">
+                    <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                    <span>2. Tiêu Đề & Nội Dung Đồ Họa</span>
+                </h3>
+
+                <div class="space-y-3">
+                    <div class="p-3 rounded-xl bg-blue-50 border border-blue-200 space-y-2">
+                        <label for="select-language" class="block text-xs font-semibold text-[#3C3C43]">🌐 Ngôn ngữ video (người xem):</label>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <select id="select-language" onchange="onLanguageChange()"
+                                class="flex-1 px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-xs text-[#1C1C1E]">
+                                {% for l in languages %}
+                                <option value="{{ l.code }}" {{ 'selected' if l.code == video_language else '' }}>{{ l.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="button" id="btn-ai-script" onclick="aiWriteScript()"
+                                class="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow transition whitespace-nowrap">
+                                ✨ AI viết lời
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-[#8A8A8E] leading-relaxed">AI viết tít và lời bình bằng thứ tiếng đã chọn từ nội dung tin. Danh sách giọng đọc bên dưới tự đổi theo. Đọc lại trước khi xuất video.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-[#3C3C43] mb-1">Banner Tít Trên (Header):</label>
+                            <input type="text" id="input-header-text" value="{{ header_text }}" oninput="updateLiveOverlay()"
+                                class="w-full px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-xs text-[#1C1C1E] focus:outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-[#3C3C43] mb-1">Tên Nguồn Tin:</label>
+                            <input type="text" id="input-source-text" value="{{ post.source.title if post.source else 'TỔNG HỢP' }}" oninput="updateLiveOverlay()"
+                                class="w-full px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-xs text-[#1C1C1E] focus:outline-none focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-[#3C3C43] mb-1">Tiêu Đề Điểm Tin Chính (Headline Card):</label>
+                        <textarea id="input-headline-text" rows="2" oninput="updateLiveOverlay()"
+                            class="w-full p-2.5 rounded-xl bg-white border border-[#D9D9DE] text-xs text-[#1C1C1E] focus:outline-none focus:border-blue-500 leading-relaxed custom-scroll"
+                            placeholder="Gõ tiêu đề nổi bật hiển thị trên video...">{{ hook_title or '' }}</textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-[#3C3C43] mb-1">Dòng Nhắc Chân Trang (Call to Action):</label>
+                        <input type="text" id="input-footer-text" value="{{ lang_labels.footer }}" oninput="updateLiveOverlay()"
+                            class="w-full px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-xs text-[#1C1C1E] focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Voiceover & Audio Mixing -->
+            <div class="glass-panel p-4 rounded-2xl space-y-3">
+                <h3 class="text-xs font-bold text-[#1C1C1E] uppercase tracking-wide flex items-center space-x-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span>3. Giọng Đọc Lồng Tiếng & Hòa Âm (Audio Mixing)</span>
+                </h3>
+
+                <div class="space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-[#3C3C43] mb-1">Giọng đọc lồng tiếng:</label>
+                            <select id="select-voice" class="w-full px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-xs text-[#1C1C1E]">
+                                {% for v in voices if v.lang == video_language %}
+                                <option value="{{ v.key }}" {{ 'selected' if v.key == default_voice else '' }}>{{ v.label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-[#3C3C43] mb-1">Tốc độ đọc: <span id="val-voice-speed" class="font-mono text-blue-700">1.00×</span></label>
+                            <input type="range" id="input-voice-speed" min="0.75" max="1.35" step="0.05" value="1.0"
+                                oninput="document.getElementById('val-voice-speed').textContent = Number(this.value).toFixed(2) + '×'"
+                                class="w-full accent-blue-500 mt-2">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-[#3C3C43] mb-1">Văn bản lời bình (Voiceover Script):</label>
+                        <textarea id="input-voiceover-text" rows="4"
+                            class="w-full p-2.5 rounded-xl bg-white border border-[#D9D9DE] text-xs text-[#1C1C1E] focus:outline-none focus:border-blue-500 leading-relaxed custom-scroll"
+                            placeholder="Nhập đoạn văn bản để giọng AI đọc lời bình cho video...">{{ voiceover_text }}</textarea>
+                    </div>
+
+                    <!-- Volume Sliders -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 rounded-xl bg-[#F2F2F7] border border-[#ECECEE]">
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold text-[#3C3C43] mb-1">
+                                <span>🗣️ Âm lượng Giọng đọc AI:</span>
+                                <span id="val-voice-vol" class="font-mono text-emerald-700">100%</span>
+                            </div>
+                            <input type="range" id="input-voice-vol" min="0.0" max="1.5" step="0.05" value="1.0"
+                                oninput="document.getElementById('val-voice-vol').textContent = Math.round(this.value * 100) + '%'"
+                                class="w-full accent-emerald-500">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold text-[#3C3C43] mb-1">
+                                <span>🔊 Âm thanh video gốc (Ducking):</span>
+                                <span id="val-orig-vol" class="font-mono text-amber-700">15%</span>
+                            </div>
+                            <input type="range" id="input-orig-vol" min="0.0" max="1.0" step="0.05" value="0.15"
+                                oninput="document.getElementById('val-orig-vol').textContent = Math.round(this.value * 100) + '%'"
+                                class="w-full accent-amber-500">
+                            <span class="text-[10px] text-[#AEAEB2] block mt-0.5">Đặt 0% để tắt hẳn tiếng gốc, 15% để làm nhạc nền thì thầm.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: Digital Anchor & Lip-Sync (MC Ảo & Khẩu Hình Môi) -->
+            <div class="glass-panel p-4 rounded-2xl space-y-3 border-indigo-500/30">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xs font-bold text-[#1C1C1E] uppercase tracking-wide flex items-center space-x-1.5">
+                        <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                        <span>4. MC Ảo & Khớp Khẩu Hình (Lip-Sync Studio)</span>
+                    </h3>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200">AI Dual-Mode</span>
+                </div>
+
+                <!-- Mode Switcher Tabs -->
+                <div class="grid grid-cols-2 gap-2 p-1 bg-[#F2F2F7] rounded-xl border border-[#ECECEE]">
+                    <button type="button" onclick="setLipsyncMode('talking_photo')" id="btn-mode-photo"
+                        class="py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 bg-indigo-600 text-white shadow">
+                        <span>👤 Chế Độ 1: MC Ảo (Ảnh)</span>
+                    </button>
+                    <button type="button" onclick="setLipsyncMode('video_lipsync')" id="btn-mode-video"
+                        class="py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 text-[#8A8A8E] hover:text-[#1C1C1E]">
+                        <span>🎬 Chế Độ 2: Khớp Miệng Video</span>
+                    </button>
+                </div>
+
+                <!-- Panel Mode 1: Talking Photo -->
+                <div id="panel-talking-photo" class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-[#3C3C43] mb-1.5">Chọn Biên Tập Viên / MC Ảo Tin Tức:</label>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {% for a in avatars %}
+                            <div onclick="selectAvatar(this.dataset.id, this.dataset.path, this.dataset.url)" id="avatar-card-{{ a.id }}"
+                                data-id="{{ a.id }}" data-path="{{ a.rel_path }}" data-url="{{ a.media_url }}"
+                                class="avatar-card cursor-pointer p-2 rounded-xl border text-center transition {% if loop.first %}bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500{% else %}bg-white border-[#D9D9DE] hover:border-indigo-500{% endif %} relative group">
+                                <div class="w-14 h-14 mx-auto rounded-full overflow-hidden border-2 border-[#C7C7CC] group-hover:border-indigo-400 bg-[#F2F2F7]">
+                                    <img src="{{ a.media_url }}" alt="{{ a.name }}" class="w-full h-full object-cover">
+                                </div>
+                                <div class="mt-1.5 text-[11px] font-bold text-[#1C1C1E] truncate">{{ a.name }}</div>
+                                <div class="text-[9px] text-[#8A8A8E] truncate">{{ a.title }}</div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Custom upload avatar -->
+                    <div class="flex items-center space-x-2 text-xs pt-1">
+                        <span class="text-[#8A8A8E]">Hoặc tải ảnh MC riêng:</span>
+                        <input type="file" id="upload-avatar-file" accept="image/*" class="hidden" onchange="handleUploadAvatar(this)">
+                        <button type="button" onclick="document.getElementById('upload-avatar-file').click()"
+                            class="px-2.5 py-1 rounded-lg bg-[#EFEFF4] hover:bg-[#E5E5EA] border border-[#C7C7CC] text-[#3C3C43] text-xs font-semibold">
+                            📁 Tải ảnh chân dung mới lên...
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Panel Mode 2: Video Lip-Sync -->
+                <div id="panel-video-lipsync" class="hidden space-y-3">
+                    <div class="p-3 rounded-xl bg-[#F2F2F7] border border-[#ECECEE] text-xs space-y-2">
+                        <p class="text-[#3C3C43]">Khớp lại khẩu hình miệng của video phóng viên/người dẫn theo giọng đọc lồng tiếng mới:</p>
+                        <div class="flex items-center justify-between text-[#8A8A8E]">
+                            <span>Video sử dụng:</span>
+                            <span class="font-semibold text-[#1C1C1E]">{% if source_video_item %}Video gốc bài viết #{{ post.id }}{% else %}Video tư liệu hiện tại{% endif %}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Anchor Placement Layout (PIP or Split) -->
+                <div>
+                    <label class="block text-xs font-semibold text-[#3C3C43] mb-1.5">Bố cục hiển thị MC trong bản tin:</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" onclick="setAnchorLayout('pip_bottom_right')" id="btn-layout-pip-br"
+                            class="p-2 rounded-xl border text-center text-xs font-bold transition bg-indigo-50 border-indigo-500 text-indigo-700 ring-2 ring-indigo-500">
+                            ↘️ Góc phải (PIP)
+                            <span class="block text-[9px] font-normal text-[#8A8A8E]">TikTok / Shorts</span>
+                        </button>
+                        <button type="button" onclick="setAnchorLayout('pip_bottom_left')" id="btn-layout-pip-bl"
+                            class="p-2 rounded-xl border text-center text-xs font-bold transition bg-white border-[#D9D9DE] text-[#3C3C43] hover:border-indigo-500">
+                            ↙️ Góc trái (PIP)
+                            <span class="block text-[9px] font-normal text-[#8A8A8E]">Tin Thời sự VTV</span>
+                        </button>
+                        <button type="button" onclick="setAnchorLayout('split_top_bottom')" id="btn-layout-split"
+                            class="p-2 rounded-xl border text-center text-xs font-bold transition bg-white border-[#D9D9DE] text-[#3C3C43] hover:border-indigo-500">
+                            ⏸️ Phân đôi 50/50
+                            <span class="block text-[9px] font-normal text-[#8A8A8E]">Nửa trên / Nửa dưới</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Action Button: Generate MC & Lip-Sync -->
+                <div class="pt-1">
+                    <button type="button" onclick="startGenerateLipsync()" id="btn-gen-lipsync"
+                        class="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-bold text-xs shadow-lg shadow-indigo-900/30 transition flex items-center justify-center space-x-2">
+                        <span id="btn-lipsync-icon">⚡</span>
+                        <span id="btn-lipsync-label">Tạo Cử Động Khẩu Hình MC (Lip-Sync)</span>
+                    </button>
+                </div>
+
+                <!-- Progress / Status Box -->
+                <div id="lipsync-status-box" class="hidden p-3 rounded-xl bg-white border border-[#D9D9DE] text-xs">
+                    <div class="flex items-center space-x-2 text-indigo-700">
+                        <svg class="animate-spin h-4 w-4 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                        </svg>
+                        <span id="lipsync-status-text">Đang phân tích phổ âm thanh & đồng bộ cử động môi MC...</span>
+                    </div>
+                </div>
+
+                <!-- Anchor Video Preview Card (When ready) -->
+                <div id="anchor-result-card" class="hidden p-3 rounded-xl bg-[#F2F2F7] border border-indigo-500/50 space-y-2">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-bold text-emerald-700 flex items-center gap-1">✓ MC Khẩu Hình Đã Hoàn Thành</span>
+                        <span id="anchor-duration-text" class="text-[#8A8A8E] font-mono text-[11px]"></span>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <div class="w-16 h-16 rounded-lg overflow-hidden border border-[#D9D9DE] bg-black flex-shrink-0">
+                            <video id="anchor-preview-video" playsinline controls class="w-full h-full object-cover"></video>
+                        </div>
+                        <div class="flex-1 space-y-1.5">
+                            <p class="text-[11px] text-[#3C3C43]">Video MC đã khớp khẩu hình chuẩn xác. Bấm nút dưới để lồng MC vào bản tin:</p>
+                            <button type="button" onclick="compositeAnchorIntoCurrentNews()" id="btn-composite-anchor"
+                                class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center space-x-1.5 shadow">
+                                <span>➕ Lồng MC Vào Bản Tin Này</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Big Render Button & Progress -->
+            <div class="p-4 rounded-2xl bg-gradient-to-br from-[#F2F2F7] to-[#F2F2F7] border border-[#ECECEE] space-y-3">
+                <button type="button" onclick="startRenderVideo()" id="btn-render-bottom"
+                    class="w-full py-3.5 rounded-xl bg-gradient-to-r from-rose-600 via-red-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-sm shadow-xl shadow-rose-900/30 transition flex items-center justify-center space-x-2">
+                    <span id="btn-render-icon">🎬</span>
+                    <span id="btn-render-label">Xuất Bản Video Đã Tinh Chỉnh (Render Video)</span>
+                </button>
+
+                <!-- Status Progress Message -->
+                <div id="render-status-box" class="hidden p-3 rounded-xl bg-white border border-[#D9D9DE] text-xs">
+                    <div class="flex items-center space-x-2 text-[#3C3C43]">
+                        <svg class="animate-spin h-4 w-4 text-rose-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                        </svg>
+                        <span id="render-status-text">Đang lồng giọng đọc và xử lý đồ họa qua FFmpeg...</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+const POST_ID = {{ post.id }};
+const VOICES = {{ voices | tojson }};
+const DEFAULT_VOICE = {{ default_voice | tojson }};
+const LANGS = Object.fromEntries({{ languages | tojson }}.map(l => [l.code, l]));
+let currentLang = {{ video_language | tojson }};
+let currentAspectRatio = '9:16';
+let currentTheme = 'red';
+const videoPlayer = document.getElementById('editor-video-player');
+
+// Lip-Sync State
+let currentLipsyncMode = 'talking_photo';
+let currentAnchorLayout = 'pip_bottom_right';
+let selectedAvatarPath = {{ (avatars[0].rel_path if avatars else '') | tojson }};
+let selectedAvatarId = {{ (avatars[0].id if avatars else '') | tojson }};
+let lastAnchorRelPath = '';
+let lastRenderedNewsRelPath = {{ (latest_video.file_path if latest_video else (source_video_item.file_path if source_video_item else '')) | tojson }};
+
+// Theme palettes
+const THEMES = {
+    red: {
+        header_bg: 'rgba(185, 28, 28, 0.95)',
+        header_text: '#ffffff',
+        source_text: '#fecaca',
+        card_bg: 'rgba(15, 23, 42, 0.95)',
+        card_border: '#ef4444',
+        tag_text: '#f87171',
+        footer_bg: 'rgba(30, 41, 59, 0.95)',
+        footer_text: '#fca5a5',
+        ring: 'ring-red-500'
+    },
+    blue: {
+        header_bg: 'rgba(29, 78, 216, 0.95)',
+        header_text: '#ffffff',
+        source_text: '#bfdbfe',
+        card_bg: 'rgba(15, 23, 42, 0.95)',
+        card_border: '#3b82f6',
+        tag_text: '#60a5fa',
+        footer_bg: 'rgba(30, 41, 59, 0.95)',
+        footer_text: '#38bdf8',
+        ring: 'ring-blue-500'
+    },
+    gold: {
+        header_bg: 'rgba(180, 83, 9, 0.95)',
+        header_text: '#ffffff',
+        source_text: '#fef08a',
+        card_bg: 'rgba(15, 23, 42, 0.95)',
+        card_border: '#eab308',
+        tag_text: '#facc15',
+        footer_bg: 'rgba(30, 41, 59, 0.95)',
+        footer_text: '#fde047',
+        ring: 'ring-amber-500'
+    },
+    dark: {
+        header_bg: 'rgba(15, 23, 42, 0.95)',
+        header_text: '#ffffff',
+        source_text: '#cbd5e1',
+        card_bg: 'rgba(15, 23, 42, 0.95)',
+        card_border: '#64748b',
+        tag_text: '#94a3b8',
+        footer_bg: 'rgba(2, 6, 23, 0.95)',
+        footer_text: '#e2e8f0',
+        ring: 'ring-[#D1D1D6]'
+    }
+};
+
+// ---------------------------------------------------------------- WYSIWYG & Theme Sync
+function updateLiveOverlay() {
+    const lb = LANGS[currentLang].labels;
+    const headerText = document.getElementById('input-header-text').value.trim() || lb.header;
+    const sourceText = document.getElementById('input-source-text').value.trim();
+    const headlineText = document.getElementById('input-headline-text').value.trim() || 'Tiêu đề bản tin thời sự cập nhật';
+    const footerText = document.getElementById('input-footer-text').value.trim() || lb.footer;
+
+    document.getElementById('overlay-header-text').textContent = headerText.toUpperCase();
+    document.getElementById('overlay-source-text').textContent = sourceText ? lb.source + ': ' + sourceText.toUpperCase() : '';
+    document.getElementById('overlay-tag-text').textContent = lb.tag;
+    document.getElementById('overlay-headline-text').textContent = headlineText;
+    document.getElementById('overlay-footer-text').textContent = footerText.toUpperCase();
+}
+
+// ---------------------------------------------------------------- Video language
+function fillVoiceSelect() {
+    const sel = document.getElementById('select-voice');
+    const items = VOICES.filter(v => v.lang === currentLang);
+    sel.innerHTML = items.map(v => '<option value="' + escHtml(v.key) + '">' + escHtml(v.label) + '</option>').join('');
+    if (items.some(v => v.key === DEFAULT_VOICE)) sel.value = DEFAULT_VOICE;
+}
+
+function escHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+}
+
+function onLanguageChange() {
+    const old = LANGS[currentLang].labels;
+    currentLang = document.getElementById('select-language').value;
+    const lb = LANGS[currentLang].labels;
+    // Swap the banner and footer only while they still hold the previous language's default text
+    const header = document.getElementById('input-header-text');
+    const footer = document.getElementById('input-footer-text');
+    if (!header.value.trim() || header.value.trim() === old.header) header.value = lb.header;
+    if (!footer.value.trim() || footer.value.trim() === old.footer) footer.value = lb.footer;
+    fillVoiceSelect();
+    updateLiveOverlay();
+}
+
+async function aiWriteScript() {
+    const headline = document.getElementById('input-headline-text');
+    const voiceover = document.getElementById('input-voiceover-text');
+    if ((headline.value.trim() || voiceover.value.trim()) &&
+        !confirm('Thay tít và lời bình hiện tại bằng bản AI viết ' + LANGS[currentLang].name + '?')) return;
+    const btn = document.getElementById('btn-ai-script');
+    const old = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ AI đang viết...';
+    try {
+        const res = await fetch('/api/video-editor/script', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({post_id: POST_ID, language: currentLang}),
+        });
+        const data = await res.json();
+        if (!data.success) { alert(data.error || 'AI chưa viết được lời.'); return; }
+        headline.value = data.script.hook_title || '';
+        voiceover.value = data.script.voiceover || '';
+        updateLiveOverlay();
+    } catch (e) {
+        alert('Lỗi kết nối: ' + e);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = old;
+    }
+}
+
+function setTheme(theme) {
+    currentTheme = theme;
+    const colors = THEMES[theme] || THEMES.red;
+
+    document.getElementById('overlay-header-bg').style.backgroundColor = colors.header_bg;
+    document.getElementById('overlay-header-text').style.color = colors.header_text;
+    document.getElementById('overlay-source-text').style.color = colors.source_text;
+
+    document.getElementById('overlay-card-bg').style.backgroundColor = colors.card_bg;
+    document.getElementById('overlay-card-bg').style.borderColor = colors.card_border;
+    document.getElementById('overlay-tag-text').style.color = colors.tag_text;
+
+    document.getElementById('overlay-footer-bg').style.backgroundColor = colors.footer_bg;
+    document.getElementById('overlay-footer-text').style.color = colors.footer_text;
+
+    // Reset button rings
+    ['red', 'blue', 'gold', 'dark'].forEach(t => {
+        const btn = document.getElementById('btn-theme-' + t);
+        if (t === theme) {
+            btn.classList.add('ring-2', colors.ring);
+        } else {
+            btn.className = btn.className.replace(/ring-2 ring-\w+-\d+/g, '').trim();
+        }
+    });
+}
+
+function setAspectRatio(ratio) {
+    currentAspectRatio = ratio;
+    const wrapper = document.getElementById('preview-wrapper');
+    const indicator = document.getElementById('aspect-indicator');
+
+    // Button states
+    ['9-16', '16-9', '1-1'].forEach(r => {
+        const btn = document.getElementById('btn-ratio-' + r);
+        const match = (r === '9-16' && ratio === '9:16') || (r === '16-9' && ratio === '16:9') || (r === '1-1' && ratio === '1:1');
+        if (match) {
+            btn.className = 'px-3 py-2 rounded-xl border text-xs font-bold transition bg-blue-600 border-blue-500 text-white shadow';
+        } else {
+            btn.className = 'px-3 py-2 rounded-xl border text-xs font-bold transition bg-white border-[#D9D9DE] text-[#3C3C43] hover:bg-[#EFEFF4]';
+        }
+    });
+
+    if (ratio === '9:16') {
+        wrapper.style.width = '280px';
+        wrapper.style.height = '498px';
+        indicator.textContent = '9:16 Dọc';
+    } else if (ratio === '16:9') {
+        wrapper.style.width = '440px';
+        wrapper.style.height = '248px';
+        indicator.textContent = '16:9 Ngang';
+    } else {
+        wrapper.style.width = '340px';
+        wrapper.style.height = '340px';
+        indicator.textContent = '1:1 Vuông';
+    }
+}
+
+// ---------------------------------------------------------------- Video Player & Trimming
+if (videoPlayer) {
+    videoPlayer.addEventListener('loadedmetadata', () => {
+        const dur = videoPlayer.duration;
+        document.getElementById('trim-end').value = dur.toFixed(1);
+        updateTrimTimes();
+        formatTime();
+    });
+
+    videoPlayer.addEventListener('timeupdate', () => {
+        formatTime();
+        const start = parseFloat(document.getElementById('trim-start').value) || 0;
+        const end = parseFloat(document.getElementById('trim-end').value) || 0;
+        if (end > start && videoPlayer.currentTime >= end) {
+            videoPlayer.currentTime = start;
+        }
+    });
+}
+
+function togglePlayPreview() {
+    if (!videoPlayer) return;
+    const icon = document.getElementById('play-icon');
+    const txt = document.getElementById('play-text');
+    if (videoPlayer.paused) {
+        const start = parseFloat(document.getElementById('trim-start').value) || 0;
+        if (videoPlayer.currentTime < start) videoPlayer.currentTime = start;
+        videoPlayer.play();
+        icon.textContent = '⏸';
+        txt.textContent = 'Tạm dừng';
+    } else {
+        videoPlayer.pause();
+        icon.textContent = '▶';
+        txt.textContent = 'Phát';
+    }
+}
+
+function formatTime() {
+    if (!videoPlayer) return;
+    const cur = videoPlayer.currentTime || 0;
+    const dur = videoPlayer.duration || 0;
+    const cM = Math.floor(cur / 60).toString().padStart(2, '0');
+    const cS = Math.floor(cur % 60).toString().padStart(2, '0');
+    const dM = Math.floor(dur / 60).toString().padStart(2, '0');
+    const dS = Math.floor(dur % 60).toString().padStart(2, '0');
+    document.getElementById('time-display').textContent = `${cM}:${cS} / ${dM}:${dS}`;
+}
+
+function setTrimCurrent(type) {
+    if (!videoPlayer) return;
+    const cur = videoPlayer.currentTime;
+    if (type === 'start') {
+        document.getElementById('trim-start').value = cur.toFixed(1);
+    } else {
+        document.getElementById('trim-end').value = cur.toFixed(1);
+    }
+    updateTrimTimes();
+}
+
+function updateTrimTimes() {
+    const s = parseFloat(document.getElementById('trim-start').value) || 0;
+    const e = parseFloat(document.getElementById('trim-end').value) || 0;
+    const badge = document.getElementById('trim-duration-badge');
+    if (e > s) {
+        badge.textContent = 'Đoạn chọn: ' + (e - s).toFixed(1) + 's (' + s.toFixed(1) + 's → ' + e.toFixed(1) + 's)';
+    } else {
+        badge.textContent = 'Toàn bộ thời lượng';
+    }
+}
+
+// ---------------------------------------------------------------- Lip-Sync & MC Studio
+function setLipsyncMode(mode) {
+    currentLipsyncMode = mode;
+    const btnPhoto = document.getElementById('btn-mode-photo');
+    const btnVideo = document.getElementById('btn-mode-video');
+    const panelPhoto = document.getElementById('panel-talking-photo');
+    const panelVideo = document.getElementById('panel-video-lipsync');
+
+    if (mode === 'talking_photo') {
+        btnPhoto.className = 'py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 bg-indigo-600 text-white shadow';
+        btnVideo.className = 'py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 text-[#8A8A8E] hover:text-white';
+        panelPhoto.classList.remove('hidden');
+        panelVideo.classList.add('hidden');
+        document.getElementById('btn-lipsync-label').textContent = 'Tạo Cử Động Khẩu Hình MC (Lip-Sync)';
+    } else {
+        btnVideo.className = 'py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 bg-indigo-600 text-white shadow';
+        btnPhoto.className = 'py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 text-[#8A8A8E] hover:text-white';
+        panelVideo.classList.remove('hidden');
+        panelPhoto.classList.add('hidden');
+        document.getElementById('btn-lipsync-label').textContent = 'Khớp Lại Khẩu Hình Cho Video Này';
+    }
+}
+
+function selectAvatar(id, filePath, mediaUrl) {
+    selectedAvatarId = id;
+    selectedAvatarPath = filePath;
+
+    // Update active highlight in avatar cards
+    document.querySelectorAll('.avatar-card').forEach(el => {
+        el.className = 'avatar-card cursor-pointer p-2 rounded-xl border text-center transition bg-white border-[#D9D9DE] hover:border-indigo-500 relative group';
+    });
+    const card = document.getElementById('avatar-card-' + id);
+    if (card) {
+        card.className = 'avatar-card cursor-pointer p-2 rounded-xl border text-center transition bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500 relative group';
+    }
+
+    // Update live mini anchor preview on WYSIWYG
+    const liveImg = document.getElementById('live-anchor-img');
+    if (liveImg && mediaUrl) {
+        liveImg.src = mediaUrl;
+    }
+}
+
+async function handleUploadAvatar(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const statusBox = document.getElementById('lipsync-status-box');
+    const statusText = document.getElementById('lipsync-status-text');
+    statusBox.classList.remove('hidden');
+    statusText.textContent = 'Đang tải ảnh MC lên máy chủ...';
+
+    try {
+        const res = await fetch('/api/lipsync/avatars/upload', {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await res.json();
+        if (data.success) {
+            statusText.textContent = '✅ Đã tải ảnh MC thành công!';
+            selectedAvatarPath = data.rel_path;
+            selectedAvatarId = data.filename;
+            const liveImg = document.getElementById('live-anchor-img');
+            if (liveImg) liveImg.src = data.media_url;
+            setTimeout(() => statusBox.classList.add('hidden'), 2000);
+        } else {
+            statusText.textContent = '❌ Lỗi: ' + (data.detail || 'Không tải được ảnh.');
+        }
+    } catch (e) {
+        statusText.textContent = '❌ Lỗi kết nối: ' + e.message;
+    }
+}
+
+function setAnchorLayout(layout) {
+    currentAnchorLayout = layout;
+    ['pip-br', 'pip-bl', 'split'].forEach(l => {
+        const btn = document.getElementById('btn-layout-' + l);
+        const match = (l === 'pip-br' && layout === 'pip_bottom_right') ||
+                      (l === 'pip-bl' && layout === 'pip_bottom_left') ||
+                      (l === 'split' && layout === 'split_top_bottom');
+        if (match) {
+            btn.className = 'p-2 rounded-xl border text-center text-xs font-bold transition bg-indigo-50 border-indigo-500 text-indigo-700 ring-2 ring-indigo-500';
+        } else {
+            btn.className = 'p-2 rounded-xl border text-center text-xs font-bold transition bg-white border-[#D9D9DE] text-[#3C3C43] hover:border-indigo-500';
+        }
+    });
+
+    // Update live badge position on preview viewport
+    const badge = document.getElementById('live-anchor-badge');
+    if (!badge) return;
+    if (layout === 'pip_bottom_right') {
+        badge.className = 'absolute bottom-28 right-3 w-16 h-16 rounded-full border-2 border-indigo-500 overflow-hidden shadow-xl bg-white transition-all duration-300 pointer-events-none';
+    } else if (layout === 'pip_bottom_left') {
+        badge.className = 'absolute bottom-28 left-3 w-16 h-16 rounded-full border-2 border-indigo-500 overflow-hidden shadow-xl bg-white transition-all duration-300 pointer-events-none';
+    } else {
+        badge.className = 'absolute bottom-0 left-0 right-0 h-28 border-t-2 border-indigo-500 overflow-hidden shadow-xl bg-white/70 transition-all duration-300 pointer-events-none flex justify-center';
+    }
+}
+
+async function startGenerateLipsync() {
+    const btn = document.getElementById('btn-gen-lipsync');
+    const statusBox = document.getElementById('lipsync-status-box');
+    const statusText = document.getElementById('lipsync-status-text');
+    const resultCard = document.getElementById('anchor-result-card');
+
+    const sourcePath = (currentLipsyncMode === 'talking_photo') ? selectedAvatarPath : (lastRenderedNewsRelPath || '');
+    statusBox.classList.remove('hidden');
+    resultCard.classList.add('hidden');
+    if (!sourcePath) {
+        statusText.textContent = (currentLipsyncMode === 'talking_photo')
+            ? '❌ Chưa chọn ảnh MC: bấm chọn một MC hoặc tải ảnh chân dung lên.'
+            : '❌ Bài này chưa có video: bấm 🎬 Render Video trước rồi khớp khẩu hình.';
+        return;
+    }
+    btn.disabled = true;
+
+    try {
+        // 1. The MC reads the current voiceover text with the chosen voice
+        statusText.textContent = '🎙️ Đang tạo giọng đọc cho MC...';
+        const vRes = await fetch('/api/video-editor/voiceover', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                post_id: POST_ID,
+                language: currentLang,
+                voice_key: document.getElementById('select-voice').value,
+                voiceover_text: document.getElementById('input-voiceover-text').value.trim(),
+                voice_speed: parseFloat(document.getElementById('input-voice-speed').value) || 1.0,
+            }),
+        });
+        const vData = await vRes.json();
+        if (!vRes.ok || !vData.success) {
+            statusText.textContent = '❌ Lỗi giọng đọc: ' + (vData.error || 'Không tạo được giọng đọc.');
+            btn.disabled = false;
+            return;
+        }
+
+        // 2. Lip-sync render job
+        statusText.textContent = 'Đang phân tích phổ âm thanh & đồng bộ cử động môi MC...';
+        const payload = {
+            raw_post_id: POST_ID,
+            mode: currentLipsyncMode,
+            source_media_path: sourcePath,
+            audio_path: vData.audio_path,
+            layout: currentAnchorLayout,
+            engine: 'local'
+        };
+        const res = await fetch('/api/lipsync/render', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+            statusText.textContent = '❌ Lỗi: ' + (data.detail || data.error || 'Không thể tạo khẩu hình.');
+            btn.disabled = false;
+            return;
+        }
+
+        const jobId = data.job_id;
+        statusText.textContent = '⚡ Đang render khẩu hình MC (Tác vụ #' + jobId + ')...';
+
+        // Poll job
+        const pollInterval = setInterval(async () => {
+            try {
+                const sRes = await fetch('/api/lipsync/jobs/' + jobId);
+                if (!sRes.ok) return;
+                const job = await sRes.json();
+
+                if (job.status === 'done') {
+                    clearInterval(pollInterval);
+                    btn.disabled = false;
+                    statusBox.classList.add('hidden');
+                    resultCard.classList.remove('hidden');
+
+                    lastAnchorRelPath = job.output_path;
+                    document.getElementById('anchor-duration-text').textContent = (job.duration_seconds || 0).toFixed(1) + 's';
+                    const aVid = document.getElementById('anchor-preview-video');
+                    aVid.src = job.video_url;
+                    aVid.load();
+                } else if (job.status === 'failed') {
+                    clearInterval(pollInterval);
+                    btn.disabled = false;
+                    statusText.textContent = '❌ Lỗi: ' + (job.error || 'Render thất bại.');
+                }
+            } catch (err) {
+                // Keep polling
+            }
+        }, 1500);
+
+    } catch (e) {
+        statusText.textContent = '❌ Lỗi kết nối: ' + e.message;
+        btn.disabled = false;
+    }
+}
+
+async function compositeAnchorIntoCurrentNews() {
+    if (!lastAnchorRelPath) return;
+    if (!lastRenderedNewsRelPath) {
+        alert('Chưa có video bản tin để lồng MC: bấm 🎬 Render Video trước.');
+        return;
+    }
+    const btn = document.getElementById('btn-composite-anchor');
+    btn.disabled = true;
+    btn.textContent = '⏳ Đang lồng ghép MC vào video...';
+
+    const payload = {
+        news_video_path: lastRenderedNewsRelPath,
+        anchor_video_path: lastAnchorRelPath,
+        layout: currentAnchorLayout,
+        aspect_ratio: currentAspectRatio,
+        raw_post_id: POST_ID
+    };
+
+    try {
+        const res = await fetch('/api/lipsync/composite', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            btn.textContent = '✓ Đã lồng ghép MC thành công!';
+            lastRenderedNewsRelPath = data.output_path;
+
+            // Update main player
+            if (videoPlayer) {
+                videoPlayer.src = data.video_url;
+                videoPlayer.load();
+                videoPlayer.play();
+            }
+
+            // Update download button
+            const resultBox = document.getElementById('render-result-box');
+            resultBox.classList.remove('hidden');
+            const dlBtn = document.getElementById('btn-download-rendered');
+            dlBtn.href = data.video_url + '&download=1';
+        } else {
+            alert('Lỗi lồng ghép MC: ' + (data.detail || data.error || 'Thất bại'));
+            btn.disabled = false;
+            btn.textContent = '➕ Lồng MC Vào Bản Tin Này';
+        }
+    } catch (e) {
+        alert('Lỗi kết nối: ' + e.message);
+        btn.disabled = false;
+        btn.textContent = '➕ Lồng MC Vào Bản Tin Này';
+    }
+}
+
+// ---------------------------------------------------------------- Full Video Render Execution
+async function startRenderVideo() {
+    const btnTop = document.getElementById('btn-render-top');
+    const btnBottom = document.getElementById('btn-render-bottom');
+    const statusBox = document.getElementById('render-status-box');
+    const statusText = document.getElementById('render-status-text');
+
+    btnTop.disabled = true;
+    btnBottom.disabled = true;
+    statusBox.classList.remove('hidden');
+    statusText.textContent = 'Đang lồng giọng đọc và cắt ghép video theo thông số đã chỉnh...';
+
+    const payload = {
+        post_id: POST_ID,
+        aspect_ratio: currentAspectRatio,
+        start_time: parseFloat(document.getElementById('trim-start').value) || 0.0,
+        end_time: parseFloat(document.getElementById('trim-end').value) || null,
+        header_text: document.getElementById('input-header-text').value.trim() || LANGS[currentLang].labels.header,
+        headline_text: document.getElementById('input-headline-text').value.trim(),
+        source_text: document.getElementById('input-source-text').value.trim(),
+        footer_text: document.getElementById('input-footer-text').value.trim() || LANGS[currentLang].labels.footer,
+        language: currentLang,
+        theme: currentTheme,
+        voice_key: document.getElementById('select-voice').value,
+        voiceover_text: document.getElementById('input-voiceover-text').value.trim(),
+        voice_speed: parseFloat(document.getElementById('input-voice-speed').value) || 1.0,
+        voice_volume: parseFloat(document.getElementById('input-voice-vol').value) || 1.0,
+        original_volume: parseFloat(document.getElementById('input-orig-vol').value) || 0.15,
+    };
+
+    try {
+        const res = await fetch('/api/video-editor/render', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+            statusText.textContent = '❌ Lỗi: ' + (data.error || 'Không thể render video.');
+            btnTop.disabled = false;
+            btnBottom.disabled = false;
+            return;
+        }
+
+        statusText.textContent = '✅ Đã hoàn thành xuất video mới (' + data.duration + 's)!';
+        lastRenderedNewsRelPath = data.file_path;
+
+        // Update preview player to newly rendered video
+        if (videoPlayer) {
+            videoPlayer.src = data.download_url;
+            videoPlayer.load();
+            videoPlayer.play();
+        }
+
+        // Show result box
+        const resultBox = document.getElementById('render-result-box');
+        resultBox.classList.remove('hidden');
+        document.getElementById('rendered-duration').textContent = data.duration + 's';
+        const dlBtn = document.getElementById('btn-download-rendered');
+        dlBtn.href = data.download_url + '&download=1';
+
+        setTimeout(() => {
+            btnTop.disabled = false;
+            btnBottom.disabled = false;
+        }, 1500);
+
+    } catch (e) {
+        statusText.textContent = '❌ Lỗi kết nối: ' + e.message;
+        btnTop.disabled = false;
+        btnBottom.disabled = false;
+    }
+}
+
+// Initial setup
+updateLiveOverlay();
+updateTrimTimes();
+</script>
+{% endblock %}

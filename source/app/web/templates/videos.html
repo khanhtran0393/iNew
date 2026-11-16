@@ -1,0 +1,184 @@
+{% extends "layout.html" %}
+
+{% block title %}Kho Video — iNew{% endblock %}
+
+{% macro qs(extra) -%}
+{%- set params = {'tab': tab, 'media': media, 'state': state, 'source_id': source_id or '', 'page': 1} -%}
+{%- for k, v in extra.items() %}{% set _ = params.update({k: v}) %}{% endfor -%}
+?{{ params | urlencode }}
+{%- endmacro %}
+
+{% block content %}
+<div class="space-y-5">
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-[#1C1C1E]">Kho Video</h1>
+            <p class="text-sm text-[#8A8A8E] mt-0.5">Video/ảnh thu thập từ các nguồn và video do hệ thống dựng. Bấm "Tải về máy" để lưu file về máy tính hoặc điện thoại.</p>
+        </div>
+        <div class="flex gap-2 text-xs font-semibold">
+            <a href="{{ qs({'tab': 'source'}) }}" class="px-3 py-2 rounded-xl border {{ 'bg-blue-600 border-blue-500 text-white' if tab != 'generated' else 'bg-white border-[#D9D9DE] text-[#3C3C43]' }}">📥 Video từ nguồn</a>
+            <a href="{{ qs({'tab': 'generated'}) }}" class="px-3 py-2 rounded-xl border {{ 'bg-blue-600 border-blue-500 text-white' if tab == 'generated' else 'bg-white border-[#D9D9DE] text-[#3C3C43]' }}">🎬 Video đã tạo</a>
+        </div>
+    </div>
+
+    <form method="GET" action="/videos" class="glass-panel p-3 rounded-2xl flex flex-wrap items-center gap-2 text-xs">
+        <input type="hidden" name="tab" value="{{ tab }}">
+        <select name="source_id" class="px-2.5 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E] max-w-[220px]">
+            <option value="">Tất cả nguồn</option>
+            {% for s in sources %}
+            <option value="{{ s.id }}" {{ 'selected' if source_id == s.id else '' }}>{{ s.title }}</option>
+            {% endfor %}
+        </select>
+        {% if tab != 'generated' %}
+        <select name="media" class="px-2.5 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E]">
+            <option value="all" {{ 'selected' if media == 'all' else '' }}>Tất cả media (Ảnh & Video)</option>
+            <option value="video" {{ 'selected' if media == 'video' else '' }}>Chỉ video</option>
+            <option value="photo" {{ 'selected' if media == 'photo' else '' }}>Chỉ ảnh</option>
+        </select>
+        <select name="state" class="px-2.5 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E]">
+            <option value="all" {{ 'selected' if state == 'all' else '' }}>Mọi trạng thái</option>
+            <option value="downloaded" {{ 'selected' if state == 'downloaded' else '' }}>Đã có trên máy chủ</option>
+            <option value="pending" {{ 'selected' if state == 'pending' else '' }}>Chưa tải (quá lớn / lỗi)</option>
+        </select>
+        {% endif %}
+        <button type="submit" class="px-4 py-2 rounded-xl bg-[#EFEFF4] border border-[#D9D9DE] hover:bg-[#E5E5EA] text-[#1C1C1E] font-semibold">Lọc</button>
+        <span class="text-[#8A8A8E] ml-auto">{{ total }} mục</span>
+    </form>
+
+    {% if tab != 'generated' %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {% for m in items %}
+        {% set post = m.raw_post %}
+        {% set ready = m.file_path and m.file_path != pending_marker and not m.file_path.startswith('http') %}
+        <div class="glass-panel rounded-2xl overflow-hidden flex flex-col">
+            <div class="bg-black aspect-video flex items-center justify-center">
+                {% if ready and m.media_type == 'video' %}
+                <video controls preload="none" playsinline class="w-full h-full object-contain"
+                    src="/media/download?path={{ m.file_path | urlencode }}"></video>
+                {% elif ready and m.media_type == 'photo' %}
+                <img loading="lazy" class="w-full h-full object-contain" src="/media/download?path={{ m.file_path | urlencode }}" alt="">
+                {% else %}
+                <span class="text-3xl">{{ '🎞️' if m.media_type == 'video' else '🖼️' }}</span>
+                {% endif %}
+            </div>
+            <div class="p-3 space-y-2 flex-1 flex flex-col">
+                <div class="flex items-center justify-between text-[11px] text-[#8A8A8E]">
+                    <span class="uppercase font-semibold text-blue-700">{{ m.media_type }}</span>
+                    <span>{{ ((m.file_size or 0) / 1048576) | round(1) }} MB{% if m.duration %} · {{ m.duration }}s{% endif %}</span>
+                </div>
+                <div class="text-xs text-[#3C3C43] font-semibold truncate">{{ post.source.title if post and post.source else 'Nguồn' }}</div>
+                <a href="/posts/{{ m.raw_post_id }}" class="text-[11px] text-[#8A8A8E] line-clamp-2 hover:text-[#1C1C1E]">{{ (post.original_text or '(không có chữ)')[:140] if post else '' }}</a>
+                <div class="text-[10px] text-[#AEAEB2]">{{ post.created_at.strftime('%H:%M %d/%m/%Y') if post else '' }}</div>
+                <div class="mt-auto flex flex-wrap gap-1.5 pt-1">
+                    {% if ready %}
+                    <a href="/media/download?path={{ m.file_path | urlencode }}&download=1"
+                        class="flex-1 text-center px-2 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold">⬇️ Tải về máy</a>
+                    {% elif can_edit %}
+                    <button type="button" onclick="downloadFromSource({{ m.id }}, {{ m.raw_post_id }}, {{ 'true' if post and post.source and post.source.source_type == 'telegram' else 'false' }}, this)"
+                        class="flex-1 px-2 py-1.5 rounded-lg bg-amber-700 hover:bg-amber-600 text-white text-[11px] font-semibold">⬇️ Tải từ nguồn về server</button>
+                    {% else %}
+                    <span class="flex-1 text-center text-[11px] text-amber-700 py-1.5">Chưa tải</span>
+                    {% endif %}
+                    {% if can_edit %}
+                    <button type="button" onclick="createVideo({{ m.raw_post_id }}, this)"
+                        class="px-2 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-600 text-white text-[11px] font-semibold">🎬 Tạo video</button>
+                    {% endif %}
+                    {% if post and post.source_url and post.source_url.startswith('http') %}
+                    <a href="{{ post.source_url }}" target="_blank" rel="noopener"
+                        class="px-2 py-1.5 rounded-lg bg-[#EFEFF4] border border-[#D9D9DE] text-[#3C3C43] text-[11px]">🌐 Nguồn</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-sm text-[#AEAEB2] col-span-full">Chưa có media nào khớp bộ lọc.</p>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {% for v in generated %}
+        <div class="glass-panel rounded-2xl overflow-hidden flex flex-col">
+            <div class="bg-black aspect-[9/16] max-h-80 flex items-center justify-center">
+                {% if v.status == 'ready' and v.file_path %}
+                <video controls preload="none" playsinline class="w-full h-full object-contain"
+                    src="/media/download?path={{ v.file_path | urlencode }}"></video>
+                {% elif v.status == 'processing' %}
+                <span class="text-xs text-amber-700 animate-pulse">⚙️ Đang dựng...</span>
+                {% else %}
+                <span class="text-xs text-rose-700 px-3 text-center">✗ {{ v.error_message or 'Lỗi tạo video' }}</span>
+                {% endif %}
+            </div>
+            <div class="p-3 space-y-1.5 flex-1 flex flex-col">
+                <div class="flex items-center justify-between text-[10px]">
+                    <span class="px-1.5 py-0.5 rounded {{ 'bg-amber-50 text-amber-700' if v.mode == 'auto' else 'bg-indigo-50 text-indigo-700' }}">{{ 'Tự động' if v.mode == 'auto' else 'Thủ công' }}</span>
+                    <span class="text-[#AEAEB2]">{{ v.created_at.strftime('%H:%M %d/%m/%Y') }}</span>
+                </div>
+                <div class="text-xs font-bold text-[#1C1C1E] line-clamp-2">{{ v.hook_title or '(chưa có tít)' }}</div>
+                <div class="text-[11px] text-[#8A8A8E] truncate">{{ v.raw_post.source.title if v.raw_post and v.raw_post.source else '' }}</div>
+                <div class="mt-auto flex gap-1.5 pt-1">
+                    {% if v.status == 'ready' and v.file_path %}
+                    <a href="/media/download?path={{ v.file_path | urlencode }}&download=1"
+                        class="flex-1 text-center px-2 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold">⬇️ Tải về</a>
+                    {% endif %}
+                    <a href="/editor/video?post_id={{ v.raw_post_id }}" class="px-2 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white text-[11px] font-semibold">✂️ Sửa</a>
+                    <a href="/posts/{{ v.raw_post_id }}" class="px-2 py-1.5 rounded-lg bg-[#EFEFF4] border border-[#D9D9DE] text-[#3C3C43] text-[11px]">Duyệt ›</a>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-sm text-[#AEAEB2] col-span-full">Chưa có video nào được tạo. Bật "Tự động tạo video" trong mục Đấu Nối AI hoặc bấm "Tạo video" ở tab Video từ nguồn.</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="flex justify-between text-xs">
+        {% if page > 1 %}<a href="{{ qs({'page': page - 1}) }}" class="px-3 py-2 rounded-xl bg-white border border-[#D9D9DE]">‹ Trang trước</a>{% else %}<span></span>{% endif %}
+        {% if has_next %}<a href="{{ qs({'page': page + 1}) }}" class="px-3 py-2 rounded-xl bg-white border border-[#D9D9DE]">Trang sau ›</a>{% endif %}
+    </div>
+</div>
+
+<script>
+async function postJson(url, body) {
+    const res = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+    let data = {};
+    try { data = await res.json(); } catch (e) {}
+    if (!res.ok && !data.error) data.error = data.detail || ('HTTP ' + res.status);
+    return data;
+}
+
+async function downloadFromSource(itemId, postId, isTelegram, btn) {
+    btn.disabled = true;
+    const old = btn.innerText;
+    btn.innerText = '⏳ Đang tải...';
+    try {
+        const data = isTelegram
+            ? await postJson('/api/media/' + itemId + '/download-from-source', {})
+            : await postJson('/api/fetch-original-media', {post_id: postId});
+        if (data.success) location.reload();
+        else alert('Không tải được: ' + (data.error || data.message));
+    } catch (e) {
+        alert('Lỗi kết nối máy chủ: ' + e);
+    } finally {
+        btn.disabled = false;
+        btn.innerText = old;
+    }
+}
+
+async function createVideo(postId, btn) {
+    if (!confirm('Tạo video 9:16 từ tin này? (mất vài phút, video sẽ vào tab "Video đã tạo")')) return;
+    btn.disabled = true;
+    const old = btn.innerText;
+    btn.innerText = '⚙️ Đang dựng...';
+    try {
+        const data = await postJson('/api/remix-video', {post_id: postId});
+        if (data.success) location.href = '/videos?tab=generated';
+        else alert('Lỗi tạo video: ' + data.error);
+    } catch (e) {
+        alert('Lỗi kết nối máy chủ: ' + e);
+    } finally {
+        btn.disabled = false;
+        btn.innerText = old;
+    }
+}
+</script>
+{% endblock %}

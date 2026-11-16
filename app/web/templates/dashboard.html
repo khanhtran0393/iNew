@@ -1,0 +1,232 @@
+{% extends "layout.html" %}
+
+{% block title %}Tổng quan — iNew{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-[#1C1C1E]">Bảng Điều Khiển Hệ Thống</h1>
+            <p class="text-sm text-[#8A8A8E] mt-0.5">Giám sát thu thập tin tức từ 50–200+ kênh Telegram thời gian thực</p>
+        </div>
+        <div class="flex items-center space-x-2">
+            <a href="/sources" class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs shadow-md shadow-blue-500/20 transition flex items-center space-x-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                <span>Nhập Nguồn Hàng Loạt</span>
+            </a>
+            <a href="/feed" class="px-3.5 py-2 rounded-xl bg-[#EFEFF4] hover:bg-[#E5E5EA] text-[#1C1C1E] border border-[#D9D9DE] font-medium text-xs transition flex items-center space-x-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path></svg>
+                <span>Vào Kho Tin Tức</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- 4 Main KPI Cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Card 1: Sources -->
+        <div class="glass-panel p-5 rounded-2xl relative overflow-hidden">
+            <div class="text-xs font-semibold text-[#8A8A8E] uppercase tracking-wider">Kênh Đang Theo Dõi</div>
+            <div class="text-3xl font-bold text-[#1C1C1E] mt-2">{{ stats.active_sources }} <span class="text-xs text-[#AEAEB2] font-normal">/ {{ stats.total_sources }} kênh</span></div>
+            <div class="mt-2 text-xs text-emerald-700 flex items-center">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block mr-1.5 animate-pulse"></span>
+                MTProto Listener 24/7
+            </div>
+        </div>
+
+        <!-- Card 2: Total Posts -->
+        <div class="glass-panel p-5 rounded-2xl relative overflow-hidden">
+            <div class="text-xs font-semibold text-[#8A8A8E] uppercase tracking-wider">Tổng Bài Thu Thập</div>
+            <div class="text-3xl font-bold text-blue-700 mt-2">{{ stats.total_posts }}</div>
+            <div class="mt-2 text-xs text-[#8A8A8E]">
+                +{{ stats.posts_today }} tin mới trong ngày
+            </div>
+        </div>
+
+        <!-- Card 3: In Progress / Claimed -->
+        <div class="glass-panel p-5 rounded-2xl relative overflow-hidden">
+            <div class="text-xs font-semibold text-[#8A8A8E] uppercase tracking-wider">Đang Xử Lý / Biên Tập</div>
+            <div class="text-3xl font-bold text-amber-700 mt-2">{{ stats.claimed_posts }}</div>
+            <div class="mt-2 text-xs text-[#8A8A8E]">
+                {{ stats.unprocessed_posts }} tin mới chờ phân công
+            </div>
+        </div>
+
+        <!-- Card 4: Disk Watchdog (Drive D) -->
+        <div class="glass-panel p-5 rounded-2xl relative overflow-hidden">
+            <div class="text-xs font-semibold text-[#8A8A8E] uppercase tracking-wider">Bộ Nhớ Lưu Trữ (Ổ D)</div>
+            <div class="text-2xl font-bold {% if disk.is_critical %}text-red-700{% else %}text-[#1C1C1E]{% endif %} mt-2">
+                {{ disk.used_percent }}% <span class="text-xs text-[#8A8A8E] font-normal">đã dùng</span>
+            </div>
+            <!-- Progress Bar -->
+            <div class="w-full bg-[#EFEFF4] rounded-full h-1.5 mt-3 overflow-hidden">
+                <div class="h-1.5 rounded-full {% if disk.is_critical %}bg-red-500{% else %}bg-blue-500{% endif %}" style="width: {{ disk.used_percent }}%"></div>
+            </div>
+            <div class="mt-2 text-xs text-[#AEAEB2] truncate" title="{{ disk.path }}">
+                Còn trống {{ ((disk.free_bytes or 0) / 1073741824) | round(1) }} GB · {{ disk.path }}
+            </div>
+            {% if disk.is_critical %}
+            <div class="mt-1 text-[11px] font-semibold text-red-700">Chế độ chỉ lưu chữ + link: tạm dừng tự tải media</div>
+            {% endif %}
+            {% if last_cleanup %}
+            <div class="mt-1 text-[11px] text-[#AEAEB2]">Dọn gần nhất: giải phóng {{ last_cleanup.freed_mb }} MB, lưu trữ {{ last_cleanup.archived }} tin</div>
+            {% endif %}
+            {% if current_user.role.slug == 'admin' %}
+            <form action="/maintenance/run" method="POST" class="mt-2" onsubmit="return confirm('Xóa file media quá hạn khỏi ổ đĩa (vẫn giữ thông tin để tải lại)?');">
+                <button type="submit" class="text-[11px] px-2.5 py-1 rounded-lg bg-[#EFEFF4] hover:bg-[#E5E5EA] border border-[#D9D9DE] text-[#1C1C1E]">🧹 Dọn dẹp ngay</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Workflow Status Progress Grid -->
+    <div class="glass-panel p-5 rounded-2xl">
+        <h2 class="text-base font-semibold text-[#1C1C1E] mb-3">Tiến Độ Quy Trình Biên Tập Tin Tức</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 text-center">
+            <a href="/feed?status=new" class="p-3 rounded-xl bg-white/70 border border-[#ECECEE] hover:border-[#D9D9DE] transition">
+                <div class="text-xs text-[#8A8A8E]">1. Mới Nhận</div>
+                <div class="text-xl font-bold text-blue-700 mt-1">{{ workflow_counts.get('new', 0) }}</div>
+            </a>
+            <a href="/feed?status=claimed" class="p-3 rounded-xl bg-white/70 border border-[#ECECEE] hover:border-[#D9D9DE] transition">
+                <div class="text-xs text-[#8A8A8E]">2. Đã Nhận Việc</div>
+                <div class="text-xl font-bold text-indigo-700 mt-1">{{ workflow_counts.get('claimed', 0) }}</div>
+            </a>
+            <a href="/feed?status=verifying" class="p-3 rounded-xl bg-white/70 border border-[#ECECEE] hover:border-[#D9D9DE] transition">
+                <div class="text-xs text-[#8A8A8E]">3. Xác Minh</div>
+                <div class="text-xl font-bold text-amber-700 mt-1">{{ workflow_counts.get('verifying', 0) }}</div>
+            </a>
+            <a href="/feed?status=editing" class="p-3 rounded-xl bg-white/70 border border-[#ECECEE] hover:border-[#D9D9DE] transition">
+                <div class="text-xs text-[#8A8A8E]">4. Đang Biên Tập</div>
+                <div class="text-xl font-bold text-purple-700 mt-1">{{ workflow_counts.get('editing', 0) }}</div>
+            </a>
+            <a href="/feed?status=reviewing" class="p-3 rounded-xl bg-white/70 border border-[#ECECEE] hover:border-[#D9D9DE] transition">
+                <div class="text-xs text-[#8A8A8E]">5. Chờ Duyệt</div>
+                <div class="text-xl font-bold text-yellow-700 mt-1">{{ workflow_counts.get('reviewing', 0) }}</div>
+            </a>
+            <a href="/feed?status=approved" class="p-3 rounded-xl bg-white/70 border border-[#ECECEE] hover:border-[#D9D9DE] transition">
+                <div class="text-xs text-[#8A8A8E]">6. Đã Duyệt</div>
+                <div class="text-xl font-bold text-emerald-700 mt-1">{{ workflow_counts.get('approved', 0) }}</div>
+            </a>
+            <a href="/feed?status=completed" class="p-3 rounded-xl bg-white/70 border border-[#ECECEE] hover:border-[#D9D9DE] transition">
+                <div class="text-xs text-[#8A8A8E]">7. Hoàn Thành</div>
+                <div class="text-xl font-bold text-[#3C3C43] mt-1">{{ workflow_counts.get('completed', 0) }}</div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Two Columns: Recent Feed & System Status -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Latest News List -->
+        <div class="lg:col-span-2 glass-panel p-5 rounded-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-base font-semibold text-[#1C1C1E]">Tin Mới Nhận Gần Đây</h2>
+                <a href="/feed" class="text-xs text-blue-700 hover:underline">Xem tất cả &rarr;</a>
+            </div>
+            <div class="space-y-3">
+                {% for post in recent_posts %}
+                <div class="p-3.5 rounded-xl bg-white/70 border border-[#ECECEE] flex items-start justify-between gap-3 hover:border-[#D9D9DE] transition">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center space-x-2 text-xs text-[#8A8A8E] mb-1">
+                            <span class="font-semibold text-blue-700">{{ post.source.title if post.source else 'Kênh' }}</span>
+                            <span>•</span>
+                            <span>{{ post.created_at.strftime('%H:%M %d/%m') }}</span>
+                            {% if post.has_media %}
+                            <span class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] border border-blue-200">Media ({{ post.media_count }})</span>
+                            {% endif %}
+                        </div>
+                        <p class="text-sm text-[#1C1C1E] line-clamp-2 leading-relaxed">
+                            {{ post.original_text or '[Tin dạng media / không có nội dung chữ]' }}
+                        </p>
+                    </div>
+                    <div class="flex flex-col items-end space-y-1.5 flex-shrink-0">
+                        <span class="px-2 py-0.5 rounded-md text-[11px] font-medium 
+                            {% if post.workflow_status == 'new' %}bg-blue-50 text-blue-700 border border-blue-200
+                            {% elif post.workflow_status == 'claimed' %}bg-indigo-50 text-indigo-700 border border-indigo-200
+                            {% elif post.workflow_status == 'approved' %}bg-emerald-50 text-emerald-700 border border-emerald-200
+                            {% else %}bg-[#EFEFF4] text-[#8A8A8E]{% endif %}">
+                            {{ post.workflow_status | upper }}
+                        </span>
+                        <a href="/posts/{{ post.id }}" class="text-xs text-blue-700 hover:underline font-medium">Chi tiết</a>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-8 text-sm text-[#AEAEB2]">
+                    Chưa có bài viết nào được thu thập.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- System Health & Bot Status -->
+        <div class="space-y-4">
+            <div class="glass-panel p-5 rounded-2xl">
+                <h2 class="text-base font-semibold text-[#1C1C1E] mb-3">Trạng Thái Hệ Thống</h2>
+                {% macro badge(ok, text, warn=False) -%}
+                <span class="px-2 py-0.5 rounded font-semibold border {{ 'bg-emerald-50 text-emerald-700 border-emerald-200' if ok else ('bg-amber-50 text-amber-700 border-amber-200' if warn else 'bg-rose-100 text-rose-700 border-rose-200') }}">{{ text }}</span>
+                {%- endmacro %}
+                {% set tg = health.telegram %}
+                <div class="space-y-3 text-xs">
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/70 border border-[#ECECEE]">
+                        <a href="/settings/telegram" class="text-[#3C3C43] hover:underline">Thu thập Telegram</a>
+                        {% if tg.state == 'running' %}
+                        {{ badge(True, 'Thời gian thực') }}
+                        {% elif health.telegram_web_run %}
+                        {{ badge(False, 'Kênh công khai, 3 phút/lần', warn=True) }}
+                        {% else %}
+                        {{ badge(False, {'not_authorized': 'Chưa đăng nhập', 'not_configured': 'Chưa cấu hình', 'connecting': 'Đang kết nối', 'disconnected': 'Mất kết nối', 'error': 'Lỗi'}.get(tg.state, tg.state), warn=tg.state in ['connecting', 'not_configured']) }}
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/70 border border-[#ECECEE]">
+                        <span class="text-[#3C3C43]">{{ 'Kênh đã kết nối' if tg.state == 'running' else 'Kênh Telegram đang đọc' }}</span>
+                        {% if tg.state == 'running' %}
+                        {{ badge(health.linked_sources == health.telegram_sources, health.linked_sources ~ ' / ' ~ health.telegram_sources, warn=True) }}
+                        {% elif health.telegram_web_run %}
+                        {{ badge(health.telegram_web_run.failed == 0, (health.telegram_web_run.channels - health.telegram_web_run.failed) ~ ' / ' ~ health.telegram_web_run.channels, warn=True) }}
+                        {% else %}
+                        {{ badge(False, '0 / ' ~ health.telegram_sources, warn=True) }}
+                        {% endif %}
+                    </div>
+                    {% if tg.last_flood_wait %}
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/70 border border-[#ECECEE]">
+                        <span class="text-[#3C3C43]">Telegram bắt chờ (FloodWait)</span>
+                        {{ badge(False, tg.last_flood_wait.seconds ~ 's lúc ' ~ tg.last_flood_wait.at[11:16] ~ ' UTC', warn=True) }}
+                    </div>
+                    {% endif %}
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/70 border border-[#ECECEE]">
+                        <span class="text-[#3C3C43]">Bot cảnh báo nhóm</span>
+                        {{ badge(health.bot_running, 'Đang chạy' if health.bot_running else 'Chưa có token', warn=True) }}
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/70 border border-[#ECECEE]">
+                        <span class="text-[#3C3C43]">Cảnh báo chờ gửi / lỗi</span>
+                        {{ badge(health.outbox_failed == 0 and health.outbox_pending < 50, health.outbox_pending ~ ' / ' ~ health.outbox_failed, warn=health.outbox_failed == 0) }}
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/70 border border-[#ECECEE]">
+                        <span class="text-[#3C3C43]">Sao lưu gần nhất</span>
+                        {% if health.last_backup %}
+                        {{ badge(health.last_backup.age_hours < 30, health.last_backup.age_hours ~ ' giờ trước', warn=health.last_backup.age_hours < 72) }}
+                        {% else %}
+                        {{ badge(False, 'Chưa có', warn=True) }}
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/70 border border-[#ECECEE]">
+                        <span class="text-[#3C3C43]">Tự tạo video nháp</span>
+                        {{ badge(True, 'Bật' if health.auto_video else 'Tắt', warn=not health.auto_video) }}
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/70 border border-[#ECECEE]">
+                        <span class="text-[#3C3C43]">Tự động xuất bản</span>
+                        <span class="px-2 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200 font-semibold">Khóa cứng (OFF)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Guide / Tips -->
+            <div class="glass-panel p-5 rounded-2xl text-xs text-[#8A8A8E] space-y-2">
+                <div class="font-semibold text-[#1C1C1E] text-sm">💡 Quy trình làm việc nhanh</div>
+                <p>1. Xem tin mới và bấm <b class="text-blue-700">[Nhận xử lý]</b> để khóa bài cho riêng bạn.</p>
+                <p>2. Dùng <b class="text-indigo-700">AI Copilot</b> để dịch, tóm tắt hoặc tạo kịch bản video.</p>
+                <p>3. Gửi duyệt bài viết để Chủ biên phê duyệt trước khi xuất bản thủ công.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

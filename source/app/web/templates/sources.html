@@ -1,0 +1,200 @@
+{% extends "layout.html" %}
+
+{% block title %}Quản Lý Nguồn Tin — iNew{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    {% if request.query_params.get('msg') %}
+    <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">✓ {{ request.query_params.get('msg') }}</div>
+    {% endif %}
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-[#1C1C1E]">Quản Lý Nguồn Tin (Telegram & Báo Chí)</h1>
+            <p class="text-sm text-[#8A8A8E] mt-0.5">Theo dõi kênh Telegram và các cơ quan báo chí chính thống tại Việt Nam</p>
+        </div>
+        <div class="flex items-center space-x-2">
+            <form action="/sources/sync-rss" method="POST" class="inline">
+                <button type="submit" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs shadow-md shadow-emerald-500/20 transition flex items-center space-x-1.5">
+                    <svg class="w-4 h-4 animate-spin-hover" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    <span>Quét Cập Nhật Báo Chí Ngay</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bulk Import Card -->
+    <div class="glass-panel p-5 rounded-2xl">
+        <h2 class="text-base font-semibold text-[#1C1C1E] mb-2 flex items-center space-x-2">
+            <svg class="w-5 h-5 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+            <span>Nhập Nguồn Hàng Loạt (50–200+ Kênh)</span>
+        </h2>
+        <p class="text-xs text-[#8A8A8E] mb-4">
+            Dán danh sách các kênh Telegram (mỗi kênh một dòng). Chấp nhận các định dạng: 
+            <code class="bg-[#EFEFF4] px-1 py-0.5 rounded text-blue-700">@username</code>, 
+            <code class="bg-[#EFEFF4] px-1 py-0.5 rounded text-blue-700">t.me/username</code>, 
+            <code class="bg-[#EFEFF4] px-1 py-0.5 rounded text-blue-700">https://t.me/+...</code> (kênh riêng tư), link RSS của báo điện tử như
+            <code class="bg-[#EFEFF4] px-1 py-0.5 rounded text-blue-700">https://vnexpress.net/rss/thoi-su.rss</code>,
+            hoặc <b>link trang chủ / trang chuyên mục</b> của báo không có RSS như
+            <code class="bg-[#EFEFF4] px-1 py-0.5 rounded text-blue-700">https://znews.vn/the-gioi.html</code>
+            (hệ thống tự tìm bài mới trên trang đó 10 phút/lần và lấy toàn văn).
+        </p>
+
+        {% if import_result %}
+        <div class="mb-4 p-4 rounded-xl {% if import_result.added > 0 %}bg-emerald-50 border border-emerald-200 text-emerald-700{% else %}bg-amber-50 border border-amber-200 text-amber-700{% endif %} text-xs space-y-1">
+            <div class="font-bold text-sm">Kết quả xử lý:</div>
+            <div>• Tổng số dòng đọc: <b>{{ import_result.total }}</b></div>
+            <div>• Thêm mới thành công: <b class="text-emerald-700">{{ import_result.added }}</b> kênh</div>
+            <div>• Đã tồn tại / Trùng lặp: <b>{{ import_result.duplicates }}</b> kênh</div>
+            {% if import_result.invalid > 0 %}
+            <div class="text-rose-700">• Không hợp lệ: <b>{{ import_result.invalid }}</b> dòng</div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <form action="/sources/bulk-import" method="POST" enctype="multipart/form-data" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-[#3C3C43] mb-1.5">Phân loại vào Chủ đề</label>
+                    <select name="topic_id" class="w-full px-3 py-2 rounded-xl bg-[#EFEFF4] border border-[#D9D9DE] text-[#1C1C1E] text-xs focus:outline-none focus:border-blue-500">
+                        <option value="">-- Không gán chủ đề cụ thể (Chung) --</option>
+                        {% for topic in topics %}
+                        <option value="{{ topic.id }}">{{ topic.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-[#3C3C43] mb-1.5">Mức độ ưu tiên quét</label>
+                    <select name="priority" class="w-full px-3 py-2 rounded-xl bg-[#EFEFF4] border border-[#D9D9DE] text-[#1C1C1E] text-xs focus:outline-none focus:border-blue-500">
+                        <option value="NORMAL">Bình thường (NORMAL)</option>
+                        <option value="HIGH">Ưu tiên cao (HIGH)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-[#3C3C43] mb-1.5">Danh sách kênh</label>
+                <textarea name="raw_channels" rows="6" placeholder="@channel1&#10;https://t.me/channel2&#10;@defense_news_today"
+                    class="w-full p-3 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E] font-mono text-xs focus:outline-none focus:border-blue-500 custom-scroll"></textarea>
+                <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-[#8A8A8E]">
+                    <span>Hoặc tải file:</span>
+                    <input type="file" name="import_file" accept=".txt,.csv" class="text-xs text-[#3C3C43] file:mr-2 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-[#EFEFF4] file:text-[#1C1C1E]">
+                    <span class="text-[11px] text-[#AEAEB2]">TXT: mỗi dòng 1 kênh/link RSS. CSV: cột <code>url</code>, tùy chọn <code>title</code>, <code>priority</code> (HIGH/NORMAL/LOW), <code>topic</code> (tên hoặc slug chủ đề).</span>
+                </div>
+            </div>
+
+            <button type="submit" class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-md shadow-blue-500/20 transition">
+                Tiến Hành Nạp Hàng Loạt
+            </button>
+        </form>
+    </div>
+
+    <!-- Sources Table -->
+    <div class="glass-panel p-5 rounded-2xl">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <h2 class="text-base font-semibold text-[#1C1C1E]">Danh Sách Kênh Nguồn ({{ sources | length }})</h2>
+            <!-- Topic Filter -->
+            <div class="flex items-center space-x-2">
+                <span class="text-xs text-[#8A8A8E]">Lọc chủ đề:</span>
+                <select onchange="window.location.href='/sources?topic_id=' + this.value" class="px-2.5 py-1.5 rounded-lg bg-[#EFEFF4] border border-[#D9D9DE] text-[#1C1C1E] text-xs">
+                    <option value="">Tất cả chủ đề</option>
+                    {% for topic in topics %}
+                    <option value="{{ topic.id }}" {% if selected_topic_id == topic.id %}selected{% endif %}>{{ topic.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto custom-scroll">
+            <table class="w-full text-left text-xs">
+                <thead>
+                    <tr class="border-b border-[#ECECEE] text-[#8A8A8E] uppercase tracking-wider text-[11px]">
+                        <th class="py-3 px-3">Tên Kênh / Link</th>
+                        <th class="py-3 px-3">Chủ đề</th>
+                        <th class="py-3 px-3">Trạng thái</th>
+                        <th class="py-3 px-3">Tin cuối cùng</th>
+                        <th class="py-3 px-3">Dung lượng media</th>
+                        <th class="py-3 px-3 text-right">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[#E5E5EA]/60">
+                    {% for s in sources %}
+                    <tr class="hover:bg-white/70 transition">
+                        <td class="py-3 px-3">
+                            <div class="flex items-center space-x-2">
+                                <div class="font-medium text-[#1C1C1E]">{{ s.title }}</div>
+                                {% if s.source_type == 'rss' %}
+                                <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200 uppercase">Báo Điện Tử</span>
+                                {% elif s.source_type == 'web' %}
+                                <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-teal-100 text-teal-700 border border-teal-200 uppercase">Trang Báo</span>
+                                {% else %}
+                                <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-700 border border-blue-200 uppercase">Telegram</span>
+                                {% endif %}
+                            </div>
+                            <a href="{{ s.url }}" target="_blank" class="text-blue-700 hover:underline text-[11px] font-mono">{{ s.url }}</a>
+                        </td>
+                        <td class="py-3 px-3">
+                            {% for ts in s.topic_sources %}
+                            <span class="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-[#EFEFF4] text-[#3C3C43] border border-[#D9D9DE] mr-1 mb-1">
+                                {{ ts.topic.name }}
+                            </span>
+                            {% else %}
+                            <span class="text-[#AEAEB2] text-[11px]">Chưa gán</span>
+                            {% endfor %}
+                        </td>
+                        <td class="py-3 px-3">
+                            {% if s.enabled %}
+                            <span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-medium">Bật</span>
+                            {% else %}
+                            <span class="px-2 py-0.5 rounded bg-[#EFEFF4] text-[#8A8A8E] border border-[#D9D9DE] text-[10px] font-medium">Tắt</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-3 text-[#8A8A8E]">
+                            {% if s.last_fetched_at %}
+                            {{ s.last_fetched_at.strftime('%H:%M %d/%m') }}
+                            {% else %}
+                            <span class="text-[#AEAEB2]">Chưa quét</span>
+                            {% endif %}
+                            {% if s.error_count %}<div class="text-[10px] text-rose-700">{{ s.error_count }} lần lỗi</div>{% endif %}
+                        </td>
+                        <td class="py-3 px-3 text-[#8A8A8E] whitespace-nowrap">
+                            {% set used_mb = ((s.current_storage_bytes or 0) / 1048576) | round(1) %}
+                            <div class="{{ 'text-rose-700 font-semibold' if s.storage_quota_mb and used_mb >= s.storage_quota_mb else '' }}">{{ used_mb }} / {{ s.storage_quota_mb or '∞' }} MB</div>
+                            {% if current_user.role.slug == 'admin' %}
+                            <form action="/sources/{{ s.id }}/quota" method="POST" class="flex gap-1 mt-1">
+                                <input type="number" name="quota_mb" min="0" value="{{ s.storage_quota_mb }}" class="w-20 px-1.5 py-0.5 rounded bg-white border border-[#D9D9DE] text-[11px] text-[#1C1C1E]" title="0 = không giới hạn">
+                                <button type="submit" class="px-1.5 py-0.5 rounded bg-[#EFEFF4] border border-[#D9D9DE] text-[10px]">Lưu</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-3 text-right space-x-1.5 whitespace-nowrap">
+                            {% if current_user.role.slug == 'admin' %}
+                            {% set pc = post_counts.get(s.id, (0, 0)) %}
+                            <form action="/sources/{{ s.id }}/toggle" method="POST" class="inline">
+                                <button type="submit" class="px-2 py-1 rounded bg-[#EFEFF4] hover:bg-[#E5E5EA] text-[#3C3C43] border border-[#D9D9DE] text-[11px]">
+                                    {% if s.enabled %}Tắt{% else %}Bật{% endif %}
+                                </button>
+                            </form>
+                            <form action="/sources/{{ s.id }}/delete" method="POST" class="inline"
+                                  data-confirm="Xóa nguồn &quot;{{ s.title }}&quot;?&#10;&#10;- {{ pc[0] - pc[1] }} tin chưa ai xử lý sẽ bị xóa cùng ảnh/video.&#10;- {{ pc[1] }} tin nhân viên đã làm (đang biên tập, đã duyệt, đã đăng, bị bác bỏ...) được giữ lại.&#10;&#10;Muốn chỉ ngừng thu thập thì bấm Tắt thay vì Xóa."
+                                  onsubmit="return confirm(this.dataset.confirm);">
+                                <button type="submit" class="px-2 py-1 rounded bg-red-50 hover:bg-red-800/40 text-red-700 border border-red-200 text-[11px]">
+                                    Xóa
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="py-8 text-center text-[#AEAEB2]">
+                            Chưa có kênh nào. Hãy sử dụng biểu mẫu phía trên để nhập danh sách 50–200 kênh!
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

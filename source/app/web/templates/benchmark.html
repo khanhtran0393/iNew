@@ -1,0 +1,152 @@
+{% extends "layout.html" %}
+
+{% block title %}Hiệu Năng Thu Thập — iNew{% endblock %}
+
+{% macro stat(label, value, sub='', good=None) %}
+<div class="glass-panel p-4 rounded-2xl">
+    <div class="text-[11px] uppercase tracking-wider text-[#8A8A8E]">{{ label }}</div>
+    <div class="text-2xl font-bold mt-1 {% if good == True %}text-emerald-700{% elif good == False %}text-amber-700{% else %}text-[#1C1C1E]{% endif %}">{{ value }}</div>
+    {% if sub %}<div class="text-xs text-[#AEAEB2] mt-1">{{ sub }}</div>{% endif %}
+</div>
+{% endmacro %}
+
+{% block content %}
+{% set r = resources %}
+{% set l = latency %}
+<div class="space-y-5">
+    <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-[#1C1C1E]">Hiệu Năng Thu Thập</h1>
+            <p class="text-sm text-[#8A8A8E] mt-0.5">
+                Đo kiểm WP01: mục tiêu {{ target_channels }} kênh Telegram, chạy liên tục {{ target_hours }} giờ, phát hiện tin dưới {{ target_latency|int }} giây, bỏ sót 0%.
+                {% if started %}Bắt đầu đo {{ started.strftime('%H:%M %d/%m/%Y') }} UTC ({{ running_hours }} giờ).{% endif %}
+            </p>
+        </div>
+        <div class="flex flex-wrap gap-2 text-xs">
+            <form method="GET" action="/benchmark" class="flex gap-2">
+                <select name="hours" onchange="this.form.submit()" class="px-2.5 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E]">
+                    {% for h, label in [(1, '1 giờ qua'), (24, '24 giờ qua'), (48, '48 giờ qua'), (0, 'Từ lúc bắt đầu đo')] %}
+                    <option value="{{ h }}" {{ 'selected' if hours == h else '' }}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+            <form method="POST" action="/benchmark/check">
+                <button class="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold" {{ 'disabled' if check_running else '' }}>
+                    {{ 'Đang kiểm tra…' if check_running else 'Kiểm tra bỏ sót ngay' }}
+                </button>
+            </form>
+            <form method="POST" action="/benchmark/restart" onsubmit="return confirm('Đặt lại mốc bắt đầu đo về thời điểm này?')">
+                <button class="px-3 py-2 rounded-xl bg-[#EFEFF4] hover:bg-[#E5E5EA] text-[#1C1C1E] border border-[#D9D9DE]">Bắt đầu đo lại</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {{ stat('Kênh đang theo dõi', (r.channels if r.samples else '—') ~ ' / ' ~ target_channels, 'kênh Telegram đã kết nối', (r.channels or 0) >= target_channels if r.samples else None) }}
+        {{ stat('Thời gian chạy', running_hours ~ ' / ' ~ target_hours ~ ' giờ', 'kết nối ' ~ (r.uptime_percent if r.samples else '—') ~ '% thời gian', running_hours >= target_hours) }}
+        {{ stat('Độ trễ trung vị', (l.p50 ~ ' giây') if l.p50 is not none else '—', 'p90 ' ~ (l.p90 if l.p90 is not none else '—') ~ 's · p99 ' ~ (l.p99 if l.p99 is not none else '—') ~ 's', (l.p50 < target_latency) if l.p50 is not none else None) }}
+        {{ stat('Tin đến dưới ' ~ target_latency|int ~ 's', (l.under_target_percent ~ '%') if l.under_target_percent is not none else '—', l.live_count ~ ' tin nhận trực tiếp · Telegram giao ' ~ (l.delivery_p50 if l.delivery_p50 is not none else '—') ~ 's, iNew xử lý ' ~ (l.processing_p50 if l.processing_p50 is not none else '—') ~ 's') }}
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {% set c = completeness %}
+        {% set left = (c.unrecovered or 0) if c else 0 %}
+        {{ stat('Bỏ sót cuối cùng', (left ~ ' tin') if c else 'chưa đo', ('trước khi lấy bù: ' ~ c.missing ~ ' / ' ~ c.expected ~ ' tin (' ~ c.miss_percent ~ '%), ' ~ c.channels ~ ' kênh · ' ~ c.checked_at[11:16] ~ ' UTC') if c else 'tự kiểm tra 2 giờ/lần', (left == 0) if c else None) }}
+        {{ stat('Phải lấy bù', (l.recovered_by_catchup_percent ~ '%') if l.recovered_by_catchup_percent is not none else '—', l.catchup_count ~ ' tin lấy qua quét bù sau mất kết nối') }}
+        {{ stat('CPU tiến trình', (r.cpu.avg ~ '%') if r.samples else '—', ('cao nhất ' ~ r.cpu.max ~ '%') if r.samples else '') }}
+        {{ stat('RAM tiến trình', (r.rss.avg|round|int ~ ' MB') if r.samples else '—', ('cao nhất ' ~ r.rss.max|round|int ~ ' MB') if r.samples else '') }}
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {{ stat('Disk IOPS (toàn máy)', ((r.read_iops.avg + r.write_iops.avg)|round(1)) if r.samples else '—', ('đọc ' ~ r.read_iops.avg ~ ' · ghi ' ~ r.write_iops.avg ~ ' · đỉnh ghi ' ~ r.write_iops.max) if r.samples else '') }}
+        {{ stat('Tăng dung lượng media', ((r.media_growth_mb_day ~ ' MB/ngày') if r.media_growth_mb_day is not none else '—') if r.samples else '—', ('hiện có ' ~ r.last.media_mb ~ ' MB') if r.samples and r.last.media_mb is not none else '') }}
+        {{ stat('Tăng dung lượng DB', (r.db_growth_mb_day ~ ' MB/ngày') if r.samples else '—', ('hiện ' ~ r.last.db_size_mb ~ ' MB') if r.samples else '') }}
+        {{ stat('Tin mới / giờ', r.posts_per_hour if r.samples else '—', 'mọi nguồn (Telegram + RSS)') }}
+    </div>
+
+    {% if completeness_history %}
+    {% set hist_expected = completeness_history|sum(attribute='expected') %}
+    {% set hist_missing = completeness_history|sum(attribute='missing') %}
+    <div class="glass-panel p-4 rounded-2xl text-xs text-[#3C3C43]">
+        <span class="font-semibold text-[#1C1C1E]">Từ lúc bắt đầu đo:</span>
+        {{ completeness_history|length }} lần kiểm tra bỏ sót (2 giờ/lần), phát hiện {{ hist_missing }} tin sót trên tổng {{ hist_expected }} lượt đối chiếu, tất cả đã được lấy bù.
+        Lần gần nhất: {{ completeness_history[-1].missing }} tin sót.
+    </div>
+    {% endif %}
+
+    {% if completeness and completeness.missing %}
+    <div class="glass-panel p-4 rounded-2xl text-xs">
+        <div class="font-semibold text-amber-700 mb-2">Lần kiểm tra gần nhất phát hiện tin bị sót (đã tự lấy bù):</div>
+        <ul class="space-y-1 text-[#3C3C43]">
+            {% for ch in completeness.per_channel if ch.missing %}
+            <li>{{ ch.title }}: thiếu {{ ch.missing }}/{{ ch.expected }} tin (mã {{ ch.missing_ids|join(', ') }})</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="grid md:grid-cols-2 gap-4">
+        <div class="glass-panel rounded-2xl overflow-x-auto custom-scroll">
+            <div class="px-4 pt-3 text-sm font-semibold text-[#1C1C1E]">Theo từng kênh</div>
+            <table class="w-full text-left text-xs mt-2">
+                <thead>
+                    <tr class="border-b border-[#ECECEE] text-[#8A8A8E] uppercase tracking-wider text-[11px]">
+                        <th class="py-2 px-3">Kênh</th>
+                        <th class="py-2 px-3 text-right">Trực tiếp</th>
+                        <th class="py-2 px-3 text-right">Lấy bù</th>
+                        <th class="py-2 px-3 text-right">Trễ trung vị</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[#E5E5EA]/60">
+                    {% for row in per_source %}
+                    <tr>
+                        <td class="py-2 px-3 text-[#1C1C1E]">{{ row.source.title }}{% if row.source.error_count %} <span class="text-red-700">({{ row.source.error_count }} lỗi)</span>{% endif %}</td>
+                        <td class="py-2 px-3 text-right text-[#3C3C43]">{{ row.live }}</td>
+                        <td class="py-2 px-3 text-right {{ 'text-amber-700' if row.catchup else 'text-[#AEAEB2]' }}">{{ row.catchup }}</td>
+                        <td class="py-2 px-3 text-right {{ 'text-emerald-700' if row.p50 is not none and row.p50 < target_latency else 'text-[#3C3C43]' }}">{{ (row.p50 ~ 's') if row.p50 is not none else '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% for s in silent_sources %}
+                    <tr><td class="py-2 px-3 text-[#AEAEB2]">{{ s.title }}</td><td colspan="3" class="py-2 px-3 text-right text-[#AEAEB2]">chưa có tin trong khoảng này</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="glass-panel rounded-2xl overflow-x-auto custom-scroll">
+            <div class="px-4 pt-3 text-sm font-semibold text-[#1C1C1E]">Tài nguyên theo giờ (UTC)</div>
+            <table class="w-full text-left text-xs mt-2">
+                <thead>
+                    <tr class="border-b border-[#ECECEE] text-[#8A8A8E] uppercase tracking-wider text-[11px]">
+                        <th class="py-2 px-3">Giờ</th>
+                        <th class="py-2 px-3 text-right">CPU TB / đỉnh</th>
+                        <th class="py-2 px-3 text-right">RAM đỉnh</th>
+                        <th class="py-2 px-3 text-right">IOPS</th>
+                        <th class="py-2 px-3 text-right">Tổng tin</th>
+                        <th class="py-2 px-3 text-right">Kết nối</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[#E5E5EA]/60">
+                    {% for h in series %}
+                    <tr>
+                        <td class="py-2 px-3 text-[#8A8A8E] whitespace-nowrap">{{ h.hour.strftime('%H:00 %d/%m') }}</td>
+                        <td class="py-2 px-3 text-right text-[#3C3C43]">{{ h.cpu }}% / {{ h.cpu_max }}%</td>
+                        <td class="py-2 px-3 text-right text-[#3C3C43]">{{ h.rss|int }} MB</td>
+                        <td class="py-2 px-3 text-right text-[#3C3C43]">{{ h.iops }}</td>
+                        <td class="py-2 px-3 text-right text-[#3C3C43]">{{ h.posts }}</td>
+                        <td class="py-2 px-3 text-right {{ 'text-emerald-700' if h.connected == 100 else 'text-amber-700' }}">{{ h.connected }}%</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="py-6 text-center text-[#AEAEB2]">Chưa có số liệu. Hệ thống ghi một mẫu mỗi phút.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <p class="text-xs text-[#AEAEB2]">
+        Độ trễ = lúc tin vào hệ thống trừ giờ đăng trên Telegram. "Lấy bù" là tin không đến trực tiếp mà được quét lại sau khi mất kết nối.
+        "Bỏ sót" là so sánh toàn bộ tin 24 giờ qua của từng kênh với kho tin; tin sót được tự lấy bù ngay. IOPS đo cho toàn ổ đĩa của máy.
+    </p>
+</div>
+{% endblock %}

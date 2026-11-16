@@ -1,0 +1,14 @@
+/* Source for app/web/static/css/app.css (scripts/build_css.sh). Edit this, not app.css. */
+
+/* Inter (SIL Open Font License, fonts/Inter-LICENSE.txt): the Windows fallback; Apple devices use SF */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../fonts/InterVariable.woff2') format('woff2');
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

@@ -1,0 +1,822 @@
+{% extends "layout.html" %}
+
+{% block title %}Phòng Giọng Đọc — iNew{% endblock %}
+
+{% macro voice_options(selected) -%}
+    {% set vieneu = voices | selectattr('engine', 'equalto', 'vieneu') | list %}
+    {% set clones = voices | selectattr('engine', 'equalto', 'clone') | list %}
+    {% set edge = voices | selectattr('engine', 'equalto', 'edge') | list %}
+    {% if clones %}
+    <optgroup label="🧬 Giọng nhân bản">
+        {% for v in clones %}<option value="{{ v.key }}" {{ 'selected' if v.key == selected else '' }}>{{ v.label }}</option>{% endfor %}
+    </optgroup>
+    {% endif %}
+    {% if vieneu %}
+    <optgroup label="🎙️ VieNeu: chạy trên máy, không cần Internet">
+        {% for v in vieneu %}<option value="{{ v.key }}" {{ 'selected' if v.key == selected else '' }}>{{ v.label }}</option>{% endfor %}
+    </optgroup>
+    {% endif %}
+    {% for l in video_languages() %}
+    {% set items = edge | selectattr('lang', 'equalto', l.code) | list %}
+    {% if items %}
+    <optgroup label="☁️ Edge · {{ l.name }} (cần Internet)">
+        {% for v in items %}<option value="{{ v.key }}" {{ 'selected' if v.key == selected else '' }}>{{ v.label }}</option>{% endfor %}
+    </optgroup>
+    {% endif %}
+    {% endfor %}
+{%- endmacro %}
+
+{% block content %}
+<div class="space-y-5">
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-[#1C1C1E]">🎙️ Phòng Giọng Đọc</h1>
+            <p class="text-sm text-[#8A8A8E] mt-0.5">Chuyển văn bản thành giọng đọc tiếng Việt, Anh, Hàn, Nhật, Trung, Thái, Indonesia, hoặc nhân bản giọng của phát thanh viên từ một đoạn ghi âm ngắn. File tạo ra là bản nháp: tải MP3 về hoặc dùng làm lời bình cho video.</p>
+        </div>
+        <div class="flex gap-2 text-xs font-semibold flex-shrink-0">
+            <a href="/voice?tab=studio" class="px-3 py-2 rounded-xl border {{ 'bg-blue-600 border-blue-500 text-white' if tab == 'studio' else 'bg-white border-[#D9D9DE] text-[#3C3C43]' }}">🎙️ Tạo giọng đọc</a>
+            <a href="/voice?tab=clone" class="px-3 py-2 rounded-xl border {{ 'bg-blue-600 border-blue-500 text-white' if tab == 'clone' else 'bg-white border-[#D9D9DE] text-[#3C3C43]' }}">🧬 Nhân bản giọng ({{ profiles | length }})</a>
+        </div>
+    </div>
+
+    <!-- Engine status -->
+    <div id="engine-banner" class="glass-panel rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3 text-xs">
+        <span class="font-semibold text-[#1C1C1E]">Engine VieNeu-TTS</span>
+        <span id="engine-chip" class="px-2 py-0.5 rounded-lg border font-semibold"></span>
+        <span id="engine-detail" class="text-[#8A8A8E] flex-1 min-w-[200px]"></span>
+        <button id="engine-retry" type="button" onclick="retryEngine()" class="hidden px-3 py-1.5 rounded-lg bg-[#EFEFF4] border border-[#D9D9DE] hover:bg-[#E5E5EA] text-[#1C1C1E] font-semibold">Nạp lại</button>
+        <div id="engine-progress" class="hidden basis-full h-1.5 rounded-full bg-[#E5E5EA] overflow-hidden">
+            <div id="engine-progress-bar" class="h-full rounded-full bg-blue-600 transition-all duration-700" style="width: 0%"></div>
+        </div>
+    </div>
+
+    {% if tab == 'studio' %}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div class="lg:col-span-2 glass-panel rounded-2xl p-5 space-y-4">
+            {% if post %}
+            <div class="text-xs p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700">
+                Văn bản lấy từ <a class="underline" href="/posts/{{ post.id }}">tin #{{ post.id }}</a>{% if post.edited_text %} (bản đã biên tập){% elif post.ai_summary %} (bản tóm tắt AI){% endif %}. Hãy sửa lại cho dễ đọc trước khi tạo giọng.
+            </div>
+            {% endif %}
+            <div>
+                <div class="flex items-center justify-between mb-1.5">
+                    <label for="tts-text" class="text-sm font-semibold text-[#1C1C1E]">Văn bản cần đọc</label>
+                    <button type="button" onclick="setText('')" class="text-xs text-[#8A8A8E] hover:text-[#1C1C1E]">Xoá trắng</button>
+                </div>
+                <textarea id="tts-text" rows="11" maxlength="{{ max_chars }}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E] text-sm leading-relaxed focus:border-blue-500 focus:outline-none custom-scroll" placeholder="Dán hoặc gõ nội dung bản tin. Dấu chấm và dấu phẩy giúp giọng ngắt nghỉ tự nhiên hơn.">{{ prefill }}</textarea>
+                <div class="flex justify-between text-[11px] text-[#AEAEB2] mt-1">
+                    <span id="tts-count"></span>
+                    <span>Số, ngày tháng và chữ viết tắt được đọc tự động; tên nước ngoài nên viết theo cách đọc.</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="sm:col-span-3">
+                    <label for="tts-voice" class="text-xs font-semibold text-[#3C3C43]">Giọng đọc</label>
+                    <select id="tts-voice" onchange="onVoiceChange()" class="mt-1 w-full px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E] text-sm">
+                        {{ voice_options(default_voice) }}
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-[#3C3C43]">Tốc độ: <span id="speed-val">1.00×</span></label>
+                    <input id="tts-speed" type="range" min="0.7" max="1.5" step="0.05" value="1" oninput="document.getElementById('speed-val').textContent = Number(this.value).toFixed(2) + '×'" class="w-full accent-blue-500">
+                </div>
+                <div id="expr-box">
+                    <label class="text-xs font-semibold text-[#3C3C43]">Độ biểu cảm: <span id="expr-val">0.80</span></label>
+                    <input id="tts-expr" type="range" min="0.4" max="1.0" step="0.05" value="0.8" oninput="document.getElementById('expr-val').textContent = Number(this.value).toFixed(2)" class="w-full accent-blue-500">
+                    <p class="text-[10px] text-[#AEAEB2]">Thấp: đều, chắc. Cao: tự nhiên, nhiều ngữ điệu.</p>
+                </div>
+                <div class="flex items-end gap-2">
+                    <button id="tts-preview-btn" type="button" onclick="previewTts()" title="Nghe thử vài giây đầu với giọng, tốc độ và độ biểu cảm đang chọn. Không lưu vào lịch sử." class="shrink-0 px-3 py-2.5 rounded-xl bg-[#EFEFF4] border border-[#D9D9DE] hover:bg-[#E5E5EA] disabled:opacity-50 text-[#1C1C1E] font-semibold text-sm whitespace-nowrap">▶ Nghe thử</button>
+                    <button id="tts-go" type="button" onclick="startTts()" class="flex-1 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold text-sm shadow-lg shadow-blue-600/20 whitespace-nowrap">🔊 Tạo giọng đọc</button>
+                </div>
+            </div>
+
+            <div id="tts-preview" class="hidden p-3 rounded-xl bg-white/70 border border-[#ECECEE] text-sm"></div>
+            <div id="tts-result" class="hidden p-3 rounded-xl bg-white/70 border border-[#ECECEE] text-sm"></div>
+        </div>
+
+        <div class="space-y-5">
+            {% if is_admin %}
+            <div class="glass-panel rounded-2xl p-5 space-y-3">
+                <h2 class="text-sm font-semibold text-[#1C1C1E]">🎬 Giọng lời bình cho video</h2>
+                <p class="text-xs text-[#8A8A8E]">Giọng dùng khi hệ thống dựng video 9:16 (bấm tay và tự động). Giọng nhân bản phải được chia sẻ cho cả tòa soạn mới chọn được.</p>
+                <p class="text-xs text-[#8A8A8E]">🌐 Ngôn ngữ của giọng này cũng là ngôn ngữ mặc định của video: chọn giọng tiếng Anh thì video tự động sẽ có lời bình tiếng Anh. Từng video vẫn đổi được ngôn ngữ ở Xưởng Video hoặc ô chọn cạnh nút 1-Click.</p>
+                <select id="default-voice" class="w-full px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E] text-sm">
+                    {{ voice_options(default_voice) }}
+                </select>
+                <button type="button" onclick="saveDefaultVoice()" class="w-full px-3 py-2 rounded-xl bg-[#EFEFF4] border border-[#D9D9DE] hover:bg-[#E5E5EA] text-[#1C1C1E] text-sm font-semibold">Lưu giọng mặc định</button>
+                <p id="default-msg" class="text-xs hidden"></p>
+            </div>
+            {% endif %}
+            <div class="glass-panel rounded-2xl p-5 text-xs text-[#8A8A8E] space-y-2">
+                <h2 class="text-sm font-semibold text-[#1C1C1E]">Mẹo để giọng hay hơn</h2>
+                <p>• Mỗi câu nên dưới 30 chữ. Câu dài thì tách bằng dấu phẩy.</p>
+                <p>• Giọng VieNeu chạy ngay trên máy này: khoảng 1 phút âm thanh mất 30–60 giây để tạo. Các lượt được xếp hàng, làm lần lượt.</p>
+                <p>• Giọng nhân bản giống thật nhất khi mẫu thu rõ, không nhạc nền, người nói đọc đều giọng.</p>
+                <p>• Âm thanh do VieNeu tạo có gắn dấu nhận diện AI không nghe thấy được. Khi phát sóng, nên ghi rõ là giọng đọc AI.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass-panel rounded-2xl p-5">
+        <h2 class="text-sm font-semibold text-[#1C1C1E] mb-3">📜 Lịch sử {{ '(cả tòa soạn)' if is_admin else 'của bạn' }}</h2>
+        <div id="history" class="space-y-2">
+            {% for j in history %}
+            <div class="history-item p-3 rounded-xl bg-white/70 border border-[#ECECEE]" data-job="{{ j.id }}" data-status="{{ j.status }}">
+                <div class="flex flex-wrap items-center gap-2 text-xs">
+                    <span class="font-semibold text-[#1C1C1E]">{{ j.voice_label }}</span>
+                    <span class="text-[#AEAEB2]">{{ j.created_at[:16] | replace('T', ' ') }} UTC</span>
+                    {% if j.post_id %}<a href="/posts/{{ j.post_id }}" class="text-blue-700 hover:underline">tin #{{ j.post_id }}</a>{% endif %}
+                    {% if j.speed != 1 %}<span class="text-[#AEAEB2]">{{ '%.2f' % j.speed }}×</span>{% endif %}
+                    <span class="job-state ml-auto"></span>
+                </div>
+                <p class="text-xs text-[#8A8A8E] mt-1.5 line-clamp-2">{{ j.text }}</p>
+                <div class="job-audio mt-2"></div>
+                <script type="application/json" class="job-json">{{ j | tojson }}</script>
+            </div>
+            {% else %}
+            <p id="history-empty" class="text-xs text-[#AEAEB2]">Chưa có lượt nào.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% else %}
+    <!-- Voice cloning -->
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+        <form id="clone-form" class="lg:col-span-3 glass-panel rounded-2xl p-5 space-y-5" onsubmit="submitClone(event)">
+            <div>
+                <h2 class="text-base font-semibold text-[#1C1C1E]">Tạo giọng nhân bản</h2>
+                <p class="text-xs text-[#8A8A8E] mt-0.5">Cần {{ ref_min | int }}–{{ ref_max | int }} giây người đó nói liên tục. Tốt nhất là 6–10 giây, thu ở phòng yên tĩnh.</p>
+            </div>
+
+            <div class="space-y-3">
+                <div class="text-xs font-semibold text-[#3C3C43] uppercase tracking-wide">1. Mẫu giọng</div>
+                <div class="p-3 rounded-xl bg-white/70 border border-[#ECECEE] space-y-3">
+                    <p class="text-xs text-[#8A8A8E]">Đọc đoạn sau với giọng đọc bản tin bình thường:</p>
+                    <blockquote class="text-sm text-[#1C1C1E] italic border-l-2 border-blue-500 pl-3">{{ sample_script }}</blockquote>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button id="rec-btn" type="button" onclick="toggleRecord()" class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold">⏺ Ghi âm</button>
+                        <span id="rec-timer" class="text-sm font-mono text-[#3C3C43]">0.0 s</span>
+                        <span class="text-xs text-[#AEAEB2]">hoặc</span>
+                        <label class="px-3 py-2 rounded-xl bg-[#EFEFF4] border border-[#D9D9DE] hover:bg-[#E5E5EA] text-[#1C1C1E] text-sm font-semibold cursor-pointer">
+                            📁 Tải tệp lên
+                            <input id="clone-file" type="file" accept="audio/*,video/mp4,video/quicktime,.m4a,.opus" class="hidden" onchange="onFilePicked(this)">
+                        </label>
+                    </div>
+                    <p id="rec-note" class="text-[11px] text-amber-700 hidden"></p>
+                    <audio id="clone-preview" controls class="w-full hidden"></audio>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <div class="text-xs font-semibold text-[#3C3C43] uppercase tracking-wide">2. Thông tin giọng</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label class="text-xs text-[#3C3C43]">Tên giọng (hiện trong danh sách)
+                        <input name="name" required maxlength="128" placeholder="vd. Giọng BTV Thu Hà" class="mt-1 w-full px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E] text-sm">
+                    </label>
+                    <label class="text-xs text-[#3C3C43]">Người có giọng này
+                        <input name="speaker_name" required maxlength="128" placeholder="Họ tên người nói" class="mt-1 w-full px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E] text-sm">
+                    </label>
+                    <label class="text-xs text-[#3C3C43]">Giới tính
+                        <select name="gender" class="mt-1 w-full px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E] text-sm">
+                            <option value="">Không ghi</option><option value="female">Nữ</option><option value="male">Nam</option>
+                        </select>
+                    </label>
+                    <label class="text-xs text-[#3C3C43]">Mô tả (không bắt buộc)
+                        <input name="description" maxlength="512" placeholder="vd. Giọng Bắc, trầm, đọc thời sự" class="mt-1 w-full px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E] text-sm">
+                    </label>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <div class="text-xs font-semibold text-[#3C3C43] uppercase tracking-wide">3. Sự đồng ý của người nói</div>
+                <label class="text-xs text-[#3C3C43] block">Người đó đồng ý như thế nào?
+                    <textarea name="consent_note" required minlength="10" rows="2" placeholder="vd. Chị Thu Hà ký giấy đồng ý ngày 29/10/2026, cho phép dùng giọng để đọc bản tin của tòa soạn." class="mt-1 w-full px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E] text-sm"></textarea>
+                </label>
+                <label class="flex items-start gap-2 text-xs text-[#3C3C43]">
+                    <input type="checkbox" name="consent_confirmed" value="true" required class="mt-0.5 accent-blue-500">
+                    <span>Tôi xác nhận người nói biết và đồng ý cho tòa soạn nhân bản giọng của họ. Tôi sẽ không dùng giọng này để mạo danh họ hay nói điều họ không nói. Lượt tạo được ghi vào nhật ký.</span>
+                </label>
+                {% if is_lead %}
+                <label class="flex items-center gap-2 text-xs text-[#3C3C43]">
+                    <input type="checkbox" name="is_shared" value="true" class="accent-blue-500">
+                    <span>Chia sẻ cho cả tòa soạn (mọi biên tập viên dùng được, và chọn được làm giọng lời bình video)</span>
+                </label>
+                {% endif %}
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button id="clone-go" type="submit" class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold text-sm">🧬 Tạo giọng nhân bản</button>
+                <span id="clone-msg" class="text-xs"></span>
+            </div>
+        </form>
+
+        <div class="lg:col-span-2 space-y-3">
+            <h2 class="text-sm font-semibold text-[#1C1C1E]">Kho giọng nhân bản</h2>
+            {% for p in profiles %}
+            <div class="glass-panel rounded-2xl p-4 space-y-2">
+                <div class="flex items-start justify-between gap-2">
+                    <div>
+                        <div class="font-semibold text-[#1C1C1E] text-sm">🧬 {{ p.name }}</div>
+                        <div class="text-[11px] text-[#8A8A8E]">Giọng của {{ p.speaker_name }}{% if p.gender %} · {{ 'nữ' if p.gender == 'female' else 'nam' }}{% endif %} · mẫu {{ p.reference_seconds }} s</div>
+                        {% if p.description %}<div class="text-[11px] text-[#AEAEB2]">{{ p.description }}</div>{% endif %}
+                    </div>
+                    <span class="text-[10px] px-2 py-0.5 rounded border {{ 'bg-emerald-50 text-emerald-700 border-emerald-200' if p.is_shared else 'bg-[#EFEFF4] text-[#3C3C43] border-[#D9D9DE]' }}">{{ 'Cả tòa soạn' if p.is_shared else 'Riêng' }}</span>
+                </div>
+                <audio controls preload="none" class="w-full h-9" src="/api/voice/profiles/{{ p.id }}/sample"></audio>
+                <div class="text-[10px] text-[#AEAEB2]">Tạo bởi {{ p.created_by.full_name if p.created_by else '—' }} · {{ p.created_at.strftime('%d/%m/%Y') }} · Đồng ý: {{ p.consent_note | truncate(90) }}</div>
+                <div class="flex flex-wrap gap-2 text-xs">
+                    <a href="/voice?tab=studio&voice=clone:{{ p.id }}" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold">Dùng giọng này</a>
+                    {% if is_lead %}
+                    <button type="button" onclick="shareProfile({{ p.id }}, {{ 'false' if p.is_shared else 'true' }})" class="px-3 py-1.5 rounded-lg bg-[#EFEFF4] border border-[#D9D9DE] hover:bg-[#E5E5EA] text-[#1C1C1E]">{{ 'Thôi chia sẻ' if p.is_shared else 'Chia sẻ cả tòa soạn' }}</button>
+                    {% endif %}
+                    {% if can_manage[p.id] %}
+                    <button type="button" onclick="editProfile({{ p.id }}, {{ p.name | tojson | forceescape }}, {{ (p.description or '') | tojson | forceescape }}, {{ (p.gender or '') | tojson | forceescape }})" class="px-3 py-1.5 rounded-lg bg-[#EFEFF4] border border-[#D9D9DE] hover:bg-[#E5E5EA] text-[#1C1C1E]">Sửa</button>
+                    <button type="button" onclick="deleteProfile({{ p.id }}, {{ p.name | tojson | forceescape }})" class="px-3 py-1.5 rounded-lg bg-[#EFEFF4] border border-[#D9D9DE] hover:bg-red-50 hover:text-red-700 text-[#3C3C43]">Xoá</button>
+                    {% endif %}
+                    <button type="button" onclick="testProfile({{ p.id }}, {{ p.name | tojson | forceescape }})" class="px-3 py-1.5 rounded-lg bg-[#EFEFF4] border border-[#D9D9DE] hover:bg-emerald-50 hover:text-emerald-700 text-[#3C3C43]">🎧 Thử giọng</button>
+                </div>
+                <div id="test-result-{{ p.id }}" class="hidden mt-2 space-y-1 text-xs"></div>
+            </div>
+            {% else %}
+            <p class="text-xs text-[#AEAEB2] glass-panel rounded-2xl p-4">Chưa có giọng nhân bản nào. Ghi âm hoặc tải lên một đoạn mẫu ở bên trái.</p>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Edit profile modal -->
+<div id="edit-profile-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+    <div class="w-full max-w-md glass-panel rounded-2xl p-6 space-y-4 shadow-2xl">
+        <div class="flex items-center justify-between">
+            <h2 class="text-base font-semibold text-[#1C1C1E]">✏️ Sửa thông tin giọng</h2>
+            <button type="button" onclick="closeEditModal()" class="text-[#8A8A8E] hover:text-[#1C1C1E] text-xl leading-none">✕</button>
+        </div>
+        <input type="hidden" id="edit-profile-id">
+        <div class="space-y-3">
+            <label class="text-xs text-[#3C3C43] block">Tên giọng (hiện trong danh sách)
+                <input id="edit-profile-name" type="text" maxlength="128" required class="mt-1 w-full px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E] text-sm focus:border-blue-500 focus:outline-none">
+            </label>
+            <label class="text-xs text-[#3C3C43] block">Mô tả (không bắt buộc)
+                <input id="edit-profile-desc" type="text" maxlength="512" placeholder="vd. Giọng Bắc, trầm, đọc thời sự" class="mt-1 w-full px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E] text-sm focus:border-blue-500 focus:outline-none">
+            </label>
+            <label class="text-xs text-[#3C3C43] block">Giới tính
+                <select id="edit-profile-gender" class="mt-1 w-full px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E] text-sm">
+                    <option value="">Không ghi</option>
+                    <option value="female">Nữ</option>
+                    <option value="male">Nam</option>
+                </select>
+            </label>
+        </div>
+        <span id="edit-profile-msg" class="text-xs hidden"></span>
+        <div class="flex gap-3 pt-1">
+            <button id="edit-profile-save" type="button" onclick="saveEditProfile()" class="flex-1 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold text-sm">Lưu thay đổi</button>
+            <button type="button" onclick="closeEditModal()" class="px-4 py-2.5 rounded-xl bg-[#EFEFF4] border border-[#D9D9DE] hover:bg-[#E5E5EA] text-[#1C1C1E] text-sm">Huỷ</button>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden sample script for JS test -->
+<span id="sample-script-text" class="hidden">{{ sample_script }}</span>
+
+<script>
+const MAX_CHARS = {{ max_chars }};
+const REF_MAX = {{ ref_max }};
+let engine = {{ engine | tojson }};
+
+async function postJson(url, body) {
+    const response = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body || {})});
+    let data = {};
+    try { data = await response.json(); } catch (e) {}
+    if (!response.ok && !data.error) data.error = data.detail || ('HTTP ' + response.status);
+    return data;
+}
+
+function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+}
+
+// ---------------------------------------------------------------- engine status
+function renderEngine() {
+    const chip = document.getElementById('engine-chip');
+    const detail = document.getElementById('engine-detail');
+    const retry = document.getElementById('engine-retry');
+    const progress = document.getElementById('engine-progress');
+    retry.className = 'hidden px-3 py-1.5 rounded-lg bg-[#EFEFF4] border border-[#D9D9DE] hover:bg-[#E5E5EA] text-[#1C1C1E] font-semibold';
+    retry.textContent = engine.downloaded ? 'Nạp lại' : 'Thử tải lại';
+    progress.classList.add('hidden');
+    let cls, label, text;
+    if (!engine.installed) {
+        cls = 'bg-[#EFEFF4] text-[#3C3C43] border-[#D9D9DE]'; label = 'Chưa cài';
+        text = 'Bản iNew này chưa kèm engine VieNeu nên chỉ dùng được giọng Edge. Cài bản iNew mới nhất để có giọng VieNeu và nhân bản giọng.';
+    } else if (engine.loaded) {
+        cls = 'bg-emerald-50 text-emerald-700 border-emerald-200'; label = 'Sẵn sàng';
+        text = 'Bản ' + engine.mode + ', chạy ngay trên máy này' + (engine.load_seconds ? ' (nạp trong ' + engine.load_seconds + ' s)' : '') + '.';
+    } else if (engine.loading) {
+        cls = 'bg-amber-50 text-amber-700 border-amber-200'; label = 'Đang nạp…';
+        const downloading = !engine.downloaded && engine.download_mb != null && engine.download_mb < engine.download_total_mb * 0.98;
+        if (downloading) {
+            label = 'Đang tải…';
+            text = 'Đang tải mô hình giọng VieNeu về máy: ' + engine.download_mb + ' / ~' + engine.download_total_mb + ' MB. Chỉ tải một lần. Trong lúc chờ vẫn dùng được giọng Edge.';
+            progress.classList.remove('hidden');
+            document.getElementById('engine-progress-bar').style.width = Math.min(100, Math.round(engine.download_mb * 100 / engine.download_total_mb)) + '%';
+        } else {
+            text = 'Đang nạp mô hình giọng VieNeu, giọng VieNeu sẽ hiện ra khi nạp xong.';
+        }
+    } else if (engine.error) {
+        cls = 'bg-red-50 text-red-700 border-red-200'; label = 'Lỗi';
+        text = (engine.downloaded ? '' : 'Tải mô hình chưa xong (kiểm tra kết nối mạng rồi bấm Thử tải lại, phần đã tải được giữ lại). ') + engine.error;
+        retry.classList.remove('hidden');
+    } else if (!engine.downloaded) {
+        cls = 'bg-blue-50 text-blue-700 border-blue-200'; label = 'Chưa tải';
+        text = 'Máy này chưa có mô hình giọng VieNeu (~' + engine.download_total_mb + ' MB). Bấm Tải về để tải một lần, sau đó dùng được giọng VieNeu và nhân bản giọng. Hiện đang dùng giọng Edge.';
+        retry.className = 'px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-sm shadow-blue-600/25';
+        retry.textContent = '⬇ Tải về (~' + engine.download_total_mb + ' MB)';
+    } else {
+        cls = 'bg-[#EFEFF4] text-[#3C3C43] border-[#D9D9DE]'; label = 'Chưa nạp';
+        text = 'Mô hình được nạp khi cần.'; retry.classList.remove('hidden');
+    }
+    chip.className = 'px-2 py-0.5 rounded-lg border font-semibold ' + cls;
+    chip.textContent = label;
+    detail.textContent = text;
+    if (!engine.ffmpeg) detail.textContent += ' ' + (engine.ffmpeg_error || 'Thiếu ffmpeg: chưa xuất được MP3. Hãy cài lại iNew.');
+}
+
+async function pollEngine() {
+    if (!engine.installed || engine.loaded || (!engine.loading && (engine.error || !engine.downloaded))) return;
+    const res = await fetch('/api/voice/status');
+    if (res.ok) {
+        const data = await res.json();
+        const wasLoaded = engine.loaded;
+        engine = data.engine;
+        renderEngine();
+        if (!wasLoaded && engine.loaded) refreshVoiceLists(data.voices);
+    }
+    setTimeout(pollEngine, 3000);
+}
+
+async function retryEngine() {
+    const res = await fetch('/api/voice/engine/load', {method: 'POST'});
+    if (res.ok) { engine = await res.json(); renderEngine(); setTimeout(pollEngine, 2000); }
+}
+
+const VIDEO_LANGS = {{ video_languages() | tojson }};
+
+function refreshVoiceLists(voices) {
+    const groups = [
+        ['clone', null, '🧬 Giọng nhân bản'],
+        ['vieneu', null, '🎙️ VieNeu: chạy trên máy, không cần Internet'],
+        ...VIDEO_LANGS.map(l => ['edge', l.code, '☁️ Edge · ' + l.name + ' (cần Internet)']),
+    ];
+    document.querySelectorAll('#tts-voice, #default-voice').forEach(sel => {
+        const current = sel.value;
+        sel.innerHTML = groups.map(([engineName, lang, label]) => {
+            const items = voices.filter(v => v.engine === engineName && (!lang || v.lang === lang));
+            if (!items.length) return '';
+            return '<optgroup label="' + esc(label) + '">' + items.map(v => '<option value="' + esc(v.key) + '">' + esc(v.label) + '</option>').join('') + '</optgroup>';
+        }).join('');
+        if ([...sel.options].some(o => o.value === current)) sel.value = current;
+    });
+    onVoiceChange();
+}
+
+// ---------------------------------------------------------------- studio
+function setText(t) {
+    const area = document.getElementById('tts-text');
+    if (!area) return;
+    area.value = t;
+    updateCount();
+    area.focus();
+}
+
+function updateCount() {
+    const area = document.getElementById('tts-text');
+    if (!area) return;
+    const n = area.value.trim().length;
+    const secs = Math.round(n / 15);
+    document.getElementById('tts-count').textContent = n + ' / ' + MAX_CHARS + ' ký tự · đọc khoảng ' + (secs >= 60 ? Math.floor(secs / 60) + ' phút ' + (secs % 60) + ' giây' : secs + ' giây');
+}
+
+function onVoiceChange() {
+    const sel = document.getElementById('tts-voice');
+    if (!sel) return;
+    document.getElementById('expr-box').classList.toggle('opacity-40', sel.value.startsWith('edge:'));
+}
+
+function audioBlock(job) {
+    const src = '/api/voice/jobs/' + job.id + '/audio';
+    const editorLink = job.post_id ? '<a href="/editor/video?post_id=' + job.post_id + '" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold">🎬 Ghép MC đọc tin</a>' : '';
+    return '<audio controls preload="none" class="w-full h-10" src="' + src + '"></audio>' +
+        '<div class="flex flex-wrap gap-2 mt-2 text-xs">' +
+        '<a href="' + src + '?download=1" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold">⬇ Tải MP3</a>' +
+        editorLink +
+        '<button type="button" onclick="reuseText(' + job.id + ')" class="px-3 py-1.5 rounded-lg bg-[#EFEFF4] border border-[#D9D9DE] hover:bg-[#E5E5EA] text-[#1C1C1E]">Dùng lại văn bản</button>' +
+        '<button type="button" onclick="deleteJob(' + job.id + ')" class="px-3 py-1.5 rounded-lg bg-[#EFEFF4] border border-[#D9D9DE] hover:bg-red-50 hover:text-red-700 text-[#3C3C43]">Xoá</button>' +
+        '<span class="text-[#AEAEB2] self-center">' + (job.duration_seconds ? job.duration_seconds + ' s âm thanh' : '') + (job.render_seconds ? ' · tạo trong ' + job.render_seconds + ' s' : '') + '</span>' +
+        '</div>';
+}
+
+function stateBadge(job) {
+    const map = {
+        queued: ['bg-[#EFEFF4] text-[#3C3C43] border-[#D9D9DE]', 'Đang chờ'],
+        running: ['bg-amber-50 text-amber-700 border-amber-200', 'Đang tạo…'],
+        done: ['bg-emerald-50 text-emerald-700 border-emerald-200', 'Xong'],
+        failed: ['bg-red-50 text-red-700 border-red-200', 'Lỗi'],
+        cancelled: ['bg-[#EFEFF4] text-[#8A8A8E] border-[#D9D9DE]', 'Đã hủy'],
+    };
+    let [cls, label] = map[job.status] || map.queued;
+    const pct = job.progress && job.progress.percent;
+    if (job.status === 'running' && pct != null) label = 'Đang tạo ' + pct + '%';
+    return '<span class="px-2 py-0.5 rounded border text-[10px] font-semibold whitespace-nowrap ' + cls + '">' + label + '</span>';
+}
+
+const jobCache = {};
+
+function renderHistoryItem(el, job) {
+    jobCache[job.id] = job;
+    el.dataset.status = job.status;
+    el.querySelector('.job-state').innerHTML = stateBadge(job);
+    const box = el.querySelector('.job-audio');
+    if (job.status === 'done' && job.output_path) box.innerHTML = audioBlock(job);
+    else if (job.status === 'done') box.innerHTML = '<p class="text-xs text-[#AEAEB2]">Tệp âm thanh đã được dọn sau ' + {{ retention_days }} + ' ngày. Bấm "Dùng lại văn bản" để tạo lại.</p>' +
+        '<button type="button" onclick="reuseText(' + job.id + ')" class="mt-1 px-3 py-1.5 rounded-lg bg-[#EFEFF4] border border-[#D9D9DE] text-[#1C1C1E] text-xs">Dùng lại văn bản</button>';
+    else if (job.status === 'failed') box.innerHTML = '<p class="text-xs text-red-700">' + esc(job.error || 'Không tạo được.') + '</p>';
+    else if (job.status === 'cancelled') box.innerHTML = '<div class="flex flex-wrap items-center gap-2 text-xs"><span class="text-[#8A8A8E]">Đã hủy.</span>' +
+        '<button type="button" onclick="reuseText(' + job.id + ')" class="px-3 py-1.5 rounded-lg bg-[#EFEFF4] border border-[#D9D9DE] hover:bg-[#E5E5EA] text-[#1C1C1E]">Dùng lại văn bản</button>' +
+        '<button type="button" onclick="deleteJob(' + job.id + ')" class="px-3 py-1.5 rounded-lg bg-[#EFEFF4] border border-[#D9D9DE] hover:bg-red-50 hover:text-red-700 text-[#3C3C43]">Xoá</button></div>';
+    else renderLive(box, job, false);
+}
+
+// Progress of a queued/running render: stage, bar with percent, time left, cancel button.
+// Built once and then updated in place so the bar animates smoothly between polls.
+function renderLive(box, job, big, label) {
+    let live = box.querySelector('.live');
+    if (!live) {
+        box.innerHTML = '<div class="live">' +
+            (big ? '<div class="flex items-center gap-3 mb-2">' +
+                '<svg class="animate-spin h-4 w-4 shrink-0 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">' +
+                '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>' +
+                '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>' +
+                '<p class="flex-1 min-w-0 font-semibold text-[#1C1C1E] truncate live-title"></p>'
+                : '<div class="flex items-center gap-2 mb-1.5"><span class="live-stage flex-1 min-w-0 truncate text-xs text-[#3C3C43]"></span>') +
+            '<button type="button" class="live-cancel hidden shrink-0 px-3 py-1 rounded-lg bg-[#EFEFF4] border border-[#D9D9DE] hover:bg-red-50 hover:text-red-700 text-[#3C3C43] text-xs font-semibold">✕ Hủy</button></div>' +
+            '<div class="flex items-center gap-2"><div class="flex-1 ' + (big ? 'h-2' : 'h-1.5') + ' rounded-full bg-[#E5E5EA] overflow-hidden">' +
+            '<div class="live-bar h-full rounded-full bg-blue-600 transition-all duration-700" style="width: 0%"></div></div>' +
+            '<span class="live-pct text-xs font-semibold text-[#3C3C43] w-10 text-right"></span></div>' +
+            (big ? '<div class="flex flex-wrap justify-between gap-2 mt-1.5 text-xs text-[#8A8A8E]"><span class="live-stage"></span><span class="live-time"></span></div>' +
+                '<p class="text-[11px] text-[#AEAEB2] mt-1">Bạn có thể chuyển sang việc khác, kết quả vẫn lưu ở mục Lịch sử bên dưới.</p>' : '') +
+            '</div>';
+        live = box.querySelector('.live');
+    }
+    const p = job.progress || {};
+    const pct = p.percent;
+    const bar = live.querySelector('.live-bar');
+    bar.style.width = (pct == null ? 100 : Math.max(2, pct)) + '%';
+    bar.classList.toggle('animate-pulse', pct == null);
+    live.querySelector('.live-pct').textContent = pct == null ? '' : pct + '%';
+    const stage = p.stage || (job.status === 'running' ? 'Đang tạo giọng đọc' : 'Đang xếp hàng');
+    live.querySelectorAll('.live-stage').forEach(el => { el.textContent = stage + (p.eta ? ' · còn khoảng ' + fmtSecs(p.eta) : ''); });
+    if (big) live.querySelector('.live-title').textContent = (job.status === 'running' ? 'Đang tạo giọng đọc' : 'Đang chờ đến lượt') + ' – ' + label;
+    const cancel = live.querySelector('.live-cancel');
+    if (job.id && !cancel.dataset.busy) {
+        cancel.classList.remove('hidden');
+        cancel.onclick = () => cancelJob(job.id, cancel);
+    }
+}
+
+function fmtSecs(s) {
+    s = Math.max(1, Math.round(s));
+    return s >= 60 ? Math.floor(s / 60) + ' phút ' + (s % 60) + ' giây' : s + ' giây';
+}
+
+async function cancelJob(jobId, btn) {
+    if (btn) { btn.dataset.busy = '1'; btn.disabled = true; btn.textContent = 'Đang hủy…'; }
+    const data = await postJson('/api/voice/jobs/' + jobId + '/cancel');
+    if (data.error && btn) { btn.textContent = data.error; }
+    document.querySelectorAll('.history-item[data-job="' + jobId + '"] .live-cancel').forEach(b => { b.dataset.busy = '1'; b.disabled = true; b.textContent = 'Đang hủy…'; });
+}
+
+async function pollJob(jobId, onUpdate) {
+    const res = await fetch('/api/voice/jobs/' + jobId);
+    if (!res.ok) return;
+    const job = await res.json();
+    onUpdate(job);
+    if (job.status === 'queued' || job.status === 'running') setTimeout(() => pollJob(jobId, onUpdate), 1000);
+}
+
+function historyCard(job) {
+    const el = document.createElement('div');
+    el.className = 'history-item p-3 rounded-xl bg-white/70 border border-[#ECECEE]';
+    el.dataset.job = job.id;
+    el.innerHTML = '<div class="flex flex-wrap items-center gap-2 text-xs"><span class="font-semibold text-[#1C1C1E]">' + esc(job.voice_label) + '</span>' +
+        '<span class="text-[#AEAEB2]">vừa tạo</span><span class="job-state ml-auto"></span></div>' +
+        '<p class="text-xs text-[#8A8A8E] mt-1.5 line-clamp-2">' + esc(job.text) + '</p><div class="job-audio mt-2"></div>';
+    return el;
+}
+
+let ttsTicker = null, ttsCurrent = 0;  // the box under the button follows only the latest request
+
+// Live status right under the button: what is happening now, how far along, and a cancel button
+function showTtsProgress(result, job, label, startedAt) {
+    if (job.status === 'done' || job.status === 'failed' || job.status === 'cancelled') {
+        clearInterval(ttsTicker);
+        if (job.status === 'done') result.innerHTML = '<p class="text-emerald-700 mb-2">✓ Xong: ' + esc(job.voice_label || label) + '</p>' + audioBlock(job);
+        else if (job.status === 'cancelled') result.innerHTML = '<p class="text-[#8A8A8E]">Đã hủy lượt tạo giọng – ' + esc(label) + '.</p>';
+        else result.innerHTML = '<p class="text-red-700">✕ ' + esc(job.error || 'Không tạo được.') + '</p>';
+        return;
+    }
+    const fresh = !result.querySelector('.live');
+    renderLive(result, job, true, label);
+    if (fresh) {
+        clearInterval(ttsTicker);
+        const tick = () => {
+            const el = result.querySelector('.live-time');
+            if (el) el.textContent = 'đã chạy ' + Math.round((Date.now() - startedAt) / 1000) + ' giây';
+        };
+        tick();
+        ttsTicker = setInterval(tick, 1000);
+    }
+}
+
+async function startTts() {
+    const text = document.getElementById('tts-text').value.trim();
+    const btn = document.getElementById('tts-go');
+    const result = document.getElementById('tts-result');
+    if (!text) { setText(''); return; }
+    const label = document.getElementById('tts-voice').selectedOptions[0].textContent.trim();
+    const startedAt = Date.now(), mine = ++ttsCurrent;
+    btn.disabled = true;
+    result.classList.remove('hidden');
+    result.innerHTML = '';
+    showTtsProgress(result, {status: 'queued', progress: {percent: 0, stage: 'Đang gửi yêu cầu'}}, label, startedAt);
+    let data;
+    try {
+        data = await postJson('/api/voice/jobs', {
+            voice_key: document.getElementById('tts-voice').value,
+            text: text,
+            speed: Number(document.getElementById('tts-speed').value),
+            expressiveness: Number(document.getElementById('tts-expr').value),
+            post_id: {{ post.id if post else 'null' }},
+        });
+    } catch (e) {
+        data = {error: 'Không gửi được yêu cầu. Kiểm tra iNew còn chạy rồi thử lại.'};
+    } finally {
+        btn.disabled = false;
+    }
+    if (data.error) {
+        if (mine === ttsCurrent) showTtsProgress(result, {status: 'failed', error: data.error}, label, startedAt);
+        return;
+    }
+    const list = document.getElementById('history');
+    document.getElementById('history-empty')?.remove();
+    const card = historyCard({id: data.job_id, voice_label: label, text: text, status: 'queued'});
+    list.prepend(card);
+    renderHistoryItem(card, {id: data.job_id, status: 'queued'});
+    pollJob(data.job_id, job => {
+        renderHistoryItem(card, job);
+        if (mine === ttsCurrent) showTtsProgress(result, job, label, startedAt);
+    });
+}
+
+// ---------------------------------------------------------------- preview: a few seconds, not saved
+let previewUrl = null;
+
+async function previewTts() {
+    const btn = document.getElementById('tts-preview-btn');
+    const box = document.getElementById('tts-preview');
+    const voice = document.getElementById('tts-voice');
+    btn.disabled = true;
+    btn.textContent = '… Đang tạo';
+    box.classList.remove('hidden');
+    box.innerHTML = '<p class="text-xs text-[#8A8A8E]">Đang tạo vài giây đầu với giọng <b>' + esc(voice.selectedOptions[0].textContent.trim()) + '</b> và tốc độ, độ biểu cảm đang chọn…</p>';
+    try {
+        const res = await fetch('/api/voice/preview', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+            voice_key: voice.value,
+            text: document.getElementById('tts-text').value,
+            speed: Number(document.getElementById('tts-speed').value),
+            expressiveness: Number(document.getElementById('tts-expr').value),
+        })});
+        if (!res.ok) {
+            let data = {};
+            try { data = await res.json(); } catch (e) {}
+            box.innerHTML = '<p class="text-xs text-red-700">' + esc(data.error || ('Không tạo được đoạn nghe thử (HTTP ' + res.status + ').')) + '</p>';
+            return;
+        }
+        const snippet = decodeURIComponent(res.headers.get('X-Preview-Text') || '');
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        previewUrl = URL.createObjectURL(await res.blob());
+        box.innerHTML = '<div class="flex items-center justify-between gap-2 mb-1"><p class="text-xs text-[#8A8A8E] min-w-0 truncate">▶ Nghe thử: <span class="italic">“' + esc(snippet) + '”</span></p>' +
+            '<button type="button" onclick="closePreview()" class="shrink-0 text-xs text-[#8A8A8E] hover:text-[#1C1C1E]">Đóng</button></div>' +
+            '<audio controls autoplay class="w-full h-10" src="' + previewUrl + '"></audio>' +
+            '<p class="text-[11px] text-[#AEAEB2] mt-1">Ưng thì bấm <b>Tạo giọng đọc</b> để đọc cả bài. Chưa ưng thì đổi giọng, tốc độ hoặc độ biểu cảm rồi nghe thử lại.</p>';
+    } catch (e) {
+        box.innerHTML = '<p class="text-xs text-red-700">Không gửi được yêu cầu. Kiểm tra iNew còn chạy rồi thử lại.</p>';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '▶ Nghe thử';
+    }
+}
+
+function closePreview() {
+    const box = document.getElementById('tts-preview');
+    box.querySelector('audio')?.pause();
+    box.classList.add('hidden');
+    box.innerHTML = '';
+}
+
+function reuseText(jobId) {
+    const job = jobCache[jobId];
+    if (!job) return;
+    setText(job.text);
+    const sel = document.getElementById('tts-voice');
+    if ([...sel.options].some(o => o.value === job.voice_key)) sel.value = job.voice_key;
+    window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+async function deleteJob(jobId) {
+    if (!confirm('Xoá lượt tạo giọng này và tệp MP3?')) return;
+    const data = await postJson('/api/voice/jobs/' + jobId + '/delete');
+    if (data.error) { alert(data.error); return; }
+    document.querySelectorAll('.history-item[data-job="' + jobId + '"]').forEach(el => el.remove());
+}
+
+async function saveDefaultVoice() {
+    const msg = document.getElementById('default-msg');
+    const data = await postJson('/api/voice/default', {voice_key: document.getElementById('default-voice').value});
+    msg.classList.remove('hidden');
+    msg.className = 'text-xs ' + (data.error ? 'text-red-700' : 'text-emerald-700');
+    msg.textContent = data.error || ('✓ Video sẽ dùng giọng: ' + data.label);
+}
+
+// ---------------------------------------------------------------- edit profile modal
+function editProfile(id, name, description, gender) {
+    document.getElementById('edit-profile-id').value = id;
+    document.getElementById('edit-profile-name').value = name || '';
+    document.getElementById('edit-profile-desc').value = description || '';
+    document.getElementById('edit-profile-gender').value = gender || '';
+    document.getElementById('edit-profile-msg').textContent = '';
+    document.getElementById('edit-profile-msg').className = 'text-xs hidden';
+    document.getElementById('edit-profile-modal').classList.remove('hidden');
+}
+
+function closeEditModal() {
+    document.getElementById('edit-profile-modal').classList.add('hidden');
+}
+
+async function saveEditProfile() {
+    const id = document.getElementById('edit-profile-id').value;
+    const name = document.getElementById('edit-profile-name').value.trim();
+    const desc = document.getElementById('edit-profile-desc').value.trim();
+    const gender = document.getElementById('edit-profile-gender').value;
+    const msg = document.getElementById('edit-profile-msg');
+    const btn = document.getElementById('edit-profile-save');
+    if (!name) { msg.className = 'text-xs text-red-700'; msg.textContent = 'Hãy đặt tên cho giọng.'; return; }
+    btn.disabled = true;
+    msg.className = 'text-xs text-[#3C3C43]'; msg.textContent = 'Đang lưu…';
+    const data = await postJson('/api/voice/profiles/' + id + '/update', {name, description: desc, gender});
+    btn.disabled = false;
+    if (data.error) { msg.className = 'text-xs text-red-700'; msg.textContent = data.error; return; }
+    msg.className = 'text-xs text-emerald-700'; msg.textContent = '✓ Đã lưu.';
+    setTimeout(() => { closeEditModal(); location.reload(); }, 600);
+}
+
+// ---------------------------------------------------------------- test profile voice
+async function testProfile(id, name) {
+    const box = document.getElementById('test-result-' + id);
+    box.classList.remove('hidden');
+    box.innerHTML = '<span class="text-[#8A8A8E]">Đang xếp hàng tạo giọng thử…</span>';
+    const sampleText = document.getElementById('sample-script-text') ? document.getElementById('sample-script-text').textContent : 'Xin chào quý vị. Hôm nay tôi đang đọc đoạn văn mẫu này.';
+    const data = await postJson('/api/voice/profiles/' + id + '/test', {text: sampleText.trim().slice(0, 200)});
+    if (data.error) { box.innerHTML = '<span class="text-red-700">' + esc(data.error) + '</span>'; return; }
+    box.innerHTML = '<span class="text-amber-700">Đang tạo giọng thử… (job #' + data.job_id + ')</span>';
+    const jobId = data.job_id;
+    async function poll() {
+        const res = await fetch('/api/voice/jobs/' + jobId);
+        if (!res.ok) { box.innerHTML = '<span class="text-red-700">Không lấy được trạng thái.</span>'; return; }
+        const job = await res.json();
+        if (job.status === 'done' && job.output_path) {
+            box.innerHTML = '<audio controls preload="auto" class="w-full h-9 mt-1" src="/api/voice/jobs/' + jobId + '/audio"></audio>' +
+                '<p class="text-emerald-700 mt-1">✓ Giọng thử của ' + esc(name) + ' · ' + (job.duration_seconds || '?') + ' s</p>';
+        } else if (job.status === 'failed') {
+            box.innerHTML = '<span class="text-red-700">' + esc(job.error || 'Không tạo được giọng thử.') + '</span>';
+        } else {
+            setTimeout(poll, 2000);
+        }
+    }
+    setTimeout(poll, 1500);
+}
+
+// ---------------------------------------------------------------- cloning
+let recorder = null, recordedBlob = null, recordStart = 0, recordTick = null, chosenFile = null;
+
+function setPreview(blob) {
+    const audio = document.getElementById('clone-preview');
+    audio.src = URL.createObjectURL(blob);
+    audio.classList.remove('hidden');
+}
+
+async function toggleRecord() {
+    const btn = document.getElementById('rec-btn');
+    const note = document.getElementById('rec-note');
+    if (recorder && recorder.state === 'recording') { recorder.stop(); return; }
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+        note.textContent = 'Trình duyệt chỉ cho ghi âm khi mở iNew bằng địa chỉ localhost hoặc https. Hãy dùng nút "Tải tệp lên" với file ghi âm từ điện thoại.';
+        note.classList.remove('hidden');
+        return;
+    }
+    let stream;
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({audio: {echoCancellation: true, noiseSuppression: true}});
+    } catch (e) {
+        note.textContent = 'Không mở được micro: ' + e.message;
+        note.classList.remove('hidden');
+        return;
+    }
+    note.classList.add('hidden');
+    const chunks = [];
+    recorder = new MediaRecorder(stream);
+    recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+    recorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        clearInterval(recordTick);
+        recordedBlob = new Blob(chunks, {type: recorder.mimeType || 'audio/webm'});
+        chosenFile = null;
+        document.getElementById('clone-file').value = '';
+        setPreview(recordedBlob);
+        btn.textContent = '⏺ Ghi lại';
+        btn.className = 'px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold';
+    };
+    recorder.start();
+    recordStart = Date.now();
+    recordTick = setInterval(() => {
+        const s = (Date.now() - recordStart) / 1000;
+        document.getElementById('rec-timer').textContent = s.toFixed(1) + ' s';
+        if (s >= REF_MAX + 3) recorder.stop();
+    }, 100);
+    btn.textContent = '⏹ Dừng';
+    btn.className = 'px-4 py-2 rounded-xl bg-[#E5E5EA] hover:bg-[#D9D9DE] text-[#1C1C1E] text-sm font-semibold animate-pulse';
+}
+
+function onFilePicked(input) {
+    if (!input.files.length) return;
+    chosenFile = input.files[0];
+    recordedBlob = null;
+    document.getElementById('rec-timer').textContent = chosenFile.name;
+    setPreview(chosenFile);
+}
+
+async function submitClone(event) {
+    event.preventDefault();
+    const msg = document.getElementById('clone-msg');
+    const btn = document.getElementById('clone-go');
+    if (!recordedBlob && !chosenFile) { msg.className = 'text-xs text-red-700'; msg.textContent = 'Hãy ghi âm hoặc tải lên mẫu giọng.'; return; }
+    const form = new FormData(event.target);
+    if (chosenFile) form.append('audio', chosenFile, chosenFile.name);
+    else form.append('audio', recordedBlob, 'ghiam.' + ((recordedBlob.type.split('/')[1] || 'webm').split(';')[0]));
+    btn.disabled = true;
+    msg.className = 'text-xs text-[#3C3C43]';
+    msg.textContent = 'Đang xử lý mẫu giọng…';
+    const res = await fetch('/api/voice/profiles', {method: 'POST', body: form});
+    let data = {};
+    try { data = await res.json(); } catch (e) {}
+    btn.disabled = false;
+    if (!res.ok) { msg.className = 'text-xs text-red-700'; msg.textContent = data.error || data.detail || ('HTTP ' + res.status); return; }
+    msg.className = 'text-xs text-emerald-700';
+    msg.textContent = '✓ Đã tạo giọng (mẫu ' + data.reference_seconds + ' s). Đang chuyển sang tạo giọng đọc…';
+    setTimeout(() => { location.href = '/voice?tab=studio&voice=' + encodeURIComponent(data.voice_key); }, 800);
+}
+
+async function shareProfile(id, shared) {
+    const data = await postJson('/api/voice/profiles/' + id + '/share', {shared: shared});
+    if (data.error) { alert(data.error); return; }
+    location.reload();
+}
+
+async function deleteProfile(id, name) {
+    if (!confirm('Xoá giọng "' + name + '"? Mẫu ghi âm của người nói cũng bị xoá khỏi máy.')) return;
+    const data = await postJson('/api/voice/profiles/' + id + '/delete');
+    if (data.error) { alert(data.error); return; }
+    location.reload();
+}
+
+// ---------------------------------------------------------------- init
+renderEngine();
+pollEngine();
+const area = document.getElementById('tts-text');
+if (area) {
+    area.addEventListener('input', updateCount);
+    updateCount();
+    const wanted = new URLSearchParams(location.search).get('voice');
+    const sel = document.getElementById('tts-voice');
+    if (wanted && [...sel.options].some(o => o.value === wanted)) sel.value = wanted;
+    onVoiceChange();
+    document.querySelectorAll('.history-item').forEach(el => {
+        const job = JSON.parse(el.querySelector('.job-json').textContent);
+        renderHistoryItem(el, job);
+        if (job.status === 'queued' || job.status === 'running') pollJob(job.id, j => renderHistoryItem(el, j));
+    });
+}
+</script>
+{% endblock %}

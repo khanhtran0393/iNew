@@ -1,0 +1,177 @@
+app\_build_info.py
+  MISSING: ['LICENSE_SERVER_URL', 'cityLimiter']
+  EXTRA: []
+app\benchmark_report.py
+  MISSING: ['in', 'nnel']
+  EXTRA: []
+app\config.py
+  MISSING: ['__static_attributes__', 'ckup_dir', 'ta_dir', 'v3turbo', 'vatars_dir', 'w_media_dir']
+  EXTRA: ['GEMINI_API_KEY', 'OPENAI_API_KEY', 'Settings', 'app_dir', 'avatars_dir', 'backup_dir', 'data_dir', 'raw_media_dir']
+app\init_db.py
+  MISSING: ['AppSetting', 'nnel', 'sh_password']
+  EXTRA: ['hash_password', 'seed_default_rss_sources']
+app\launcher.py
+  MISSING: ['CREATE_NEW_PROCESS_GROUP', '_data_dir', '_relaunch', 'in', 'pp_dir', 'stop']
+  EXTRA: ['on_exit', 'on_open']
+app\main.py
+  MISSING: ['health_components', 'license_router', 'query', 'stop_bot']
+  EXTRA: ['_include_routes']
+app\models.py
+  MISSING: ['__static_attributes__', 'ai_key_id', 'nnel', 'nual', 'ready']
+  EXTRA: ['ActionLog', 'AiApiKey', 'AiTaskRoute', 'AiUsageLog', 'AppSetting', 'EditorialGroup', 'GeneratedVideo', 'LipsyncJob', 'MediaItem', 'MediaOrigin', 'MediaType', 'OutboxNotification', 'OutboxStatus', 'PublishLog', 'PublishTarget', 'RawPost', 'RawPostEditHistory', 'RawPostStatus', 'Role', 'RoleSlug', 'SourceChannel', 'SystemMetric', 'Topic', 'TopicSource', 'User', 'VoiceJob', 'VoiceProfile', 'WorkflowAuditLog', 'WorkflowStatus', '__eq__', '__init__', '__str__', 'dedupe_score', 'duration', 'file_name', 'has_media', 'is_admin', 'is_editor', 'is_lead', 'is_source_deleted', 'media_count', 'resolved_text', 'role_slug', 'topic_id', 'topics', 'used_storage_bytes']
+app\services\ai_copilot.py
+  MISSING: ['_call_llm_detailed', '_topic_id_for_post', 'i_usage_today']
+  EXTRA: ['ai_usage_today', 'generate_title_summary']
+app\services\ai_key_router.py
+  MISSING: ['dd', 'find_best_ai_key', 'get_purpose_meta', 'is_circuit_open', 'test_ai_key', 'test_gemini_api_key']
+  EXTRA: []
+app\services\ai_media.py
+  MISSING: ['_download_remote', '_error_text', '_execute', 'chunks', 'clean_srt', 'delete_uploaded', 'generate', 'nd', 'prepare_image', 'ttempts', 'upload_video']
+  EXTRA: []
+app\services\article_fetcher.py
+  MISSING: ['_utcnow', 'nnel', 'one', 'rticle_worker_loop']
+  EXTRA: ['_extractor_ok', '_fetch_one', 'article_worker_loop', 'clean_article_noise', 'extract_article_details', 'fetch_article_details']
+app\services\auto_video_service.py
+  MISSING: ['is_source_deleted', 'uto_video_worker_loop', 'workflow_status']
+  EXTRA: ['auto_video_worker_loop']
+app\services\backup_service.py
+  MISSING: ['ckup_sqlite_now', 'ckup_worker_loop', 'test_backup_info']
+  EXTRA: ['backup_sqlite_now', 'backup_worker_loop', 'get_backup_status', 'list_backups']
+app\services\benchmark_service.py
+  MISSING: ['_dir_size_mb', '_get_setting', '_percentile', '_set_setting', '_utcnow', 'benchmark_started_at', 'gg', 'mple', 'nnel', 'record_sample', 'st_completeness', 'tency_stats']
+  EXTRA: ['_Sampler', 'last_completeness', 'latency_stats', 'sample']
+app\services\bulk_import.py
+  MISSING: ['nnel', 'reason', 'rse_import_file', 'rse_telegram_channel_identifier']
+  EXTRA: ['BulkImportResult', '_import_telegram_source', 'parse_import_file', 'parse_telegram_channel_identifier']
+app\services\deduplication.py
+  MISSING: ['__init__', '_cache_for', 'forget', 'ndidates', 'value']
+  EXTRA: ['DeduplicationResult', '__bool__']
+app\services\desktop.py
+  MISSING: ['_config_file', 'ble', 'llow_lan', 'load', 'n_addresses', 'n_restart', 'port', 'register_restart']
+  EXTRA: ['get_desktop_config_path', 'get_server_port', 'lan_addresses', 'open_browser', 'read_desktop_config', 'write_desktop_config']
+app\services\diagnostics.py
+  MISSING: ['_log_files', '_masked_settings', '_system_info', '_tail', 'filename']
+  EXTRA: ['check_ffmpeg_presence', 'get_system_diagnostics', 'tail_app_logs']
+app\services\editorial_workflow.py
+  MISSING: ['_other_approvers_exist', '_utcnow', 'check_transition', 'get_workflow_statistics', 'rchive_old_posts', 's_perm', 'ssign_post']
+  EXTRA: []
+app\services\licensing.py
+  MISSING: ['LICENSE_ENFORCE', '_build_info', '_parse_expiry', 'checkin_online', 'chine_fingerprint', 'ctivate_online', 'install_token', 'license_checkin_loop', 'nnel', 'record_checkin', 'staff_remaining', 've_installed_token']
+  EXTRA: ['activate_online', 'machine_fingerprint', 'save_installed_token']
+app\services\lipsync_service.py
+  MISSING: ['_run_lipsync_job_blocking', 'analyze_audio_energy', 'composite_anchor_into_news', 'custom', 'ensure_preset_avatars', 'error_message', 'job_dict', 'nalyze_audio_energy']
+  EXTRA: ['_async_worker', '_worker', 'composite_video', 'dispatch_lipsync_job', 'get_job_status', 'get_lipsync_job']
+app\services\llm_providers.py
+  MISSING: ['_gemini', '_http_error', '_openai_compatible', 'list_models', 'nthropic', 'provider_meta', 'ude']
+  EXTRA: ['LLMError', '__init__']
+app\services\maintenance_service.py
+  MISSING: ['cleanup_media', 'intenance_worker_loop']
+  EXTRA: ['maintenance_worker_loop']
+app\services\media_fetcher.py
+  MISSING: ['_get_post_media_dir', 'download_video_via_ytdlp', 'fetch_and_store_original_media', 'scrape_article_media_urls']
+  EXTRA: ['download_media_file', 'download_media_for_post', 'download_video_yt_dlp']
+app\services\media_storage.py
+  MISSING: ['dd_source_usage', 'error', 'finalize_part_file', 'nnel', 'rt_path_for', 've_media_file_atomic']
+  EXTRA: ['add_source_usage']
+app\services\outbox_dispatcher.py
+  MISSING: ['format_alert_message', 'quote']
+  EXTRA: ['dispatch_pending_outbox', 'outbox_worker_loop']
+app\services\rss_collector.py
+  MISSING: ['_parse_date', '_text', 'dd', 'extract_image_url', 'group', 'nnel', 'rse_feed_items', 'rse_feed_xml', 'seed_default_rss_sources', 'strip_related_links', 'te']
+  EXTRA: ['parse_feed_items']
+app\services\runtime_config.py
+  MISSING: ['pply_saved_config', 'rk_setup_completed', 've_config']
+  EXTRA: ['apply_saved_config', 'mark_setup_completed', 'save_config']
+app\services\security_crypto.py
+  MISSING: ['sk_secret']
+  EXTRA: []
+app\services\source_admin.py
+  MISSING: ['_delete_posts', '_touched_post_ids', 'nnel', 'post_counts']
+  EXTRA: ['set_source_priority', 'toggle_source']
+app\services\staff_notify.py
+  MISSING: ['_utcnow', 'notify_in_background']
+  EXTRA: ['link_telegram_account', 'notify_all_staff']
+app\services\tasks.py
+  MISSING: []
+  EXTRA: ['_runner']
+app\services\telegram_bot.py
+  MISSING: ['_outbox_backoff_seconds', '_transition', 'build_editorial_keyboard', 'ckQuery', 'cmd_start_link', 'get_bot_groups', 'nd', 'ndObject', 'ndStart', 'ndle_claim', 'ndle_info', 'ndle_reject', 'ndle_verify', 'on_bot_membership_changed', 'on_group_migrated', 'record_bot_group', 'resolve_staff_user', 'tMemberUpdated', 'value']
+  EXTRA: ['send_telegram_message']
+app\services\telegram_ingestion.py
+  MISSING: ['NEW', '_download_message_media', '_download_remote_item', '_find_source', '_finish_post', '_flood_wait', '_flush_album_after_delay', '_handle_deleted_messages', '_handle_edited_message', '_handle_incoming_message', '_join_invite', '_process_single_or_album_posts', '_register_handlers', '_stay_online', '_supervise', '_sync_and_catch_up', '_utcnow', 'classify_message_media', 'complete_login', 'date', 'download_media_item', 'nnel', 'nnelRequest', 'on_message_deleted', 'on_message_edited', 'on_new_message', 'private_channel_link_id', 'restart', 'send_login_code', 'status', 'sync_source_subscriptions', 'tInviteAlready', 'tInvitePeek', 'tInviteRequest', 'tch_up_missed_messages', 'verify_completeness']
+  EXTRA: ['TelegramIngestionService', '_message_handler', '_process_incoming_event', 'catch_up_missed_messages', 'get_client', 'is_connected']
+app\services\telegram_web_collector.py
+  MISSING: ['_message_text', '_utcnow', 'download_url_to_media', 'ingest_channel', 'nnel', 'rse_preview_page', 'value', 'web']
+  EXTRA: ['parse_preview_page']
+app\services\updates.py
+  MISSING: ['_pick_asset', 'check_loop', 'check_now', 'ched', 'is_newer']
+  EXTRA: ['check_for_updates', 'get_cached_update_info']
+app\services\video_editor_service.py
+  MISSING: []
+  EXTRA: ['OverlayLayer', '_get_font', 'render_layered_video']
+app\services\video_languages.py
+  MISSING: ['bels', 'nguage_of_voice', 'normalize_language', 'oxiaoNeural']
+  EXTRA: ['language_of_voice', 'newsroom_default']
+app\services\video_producer.py
+  MISSING: ['_is_unspaced', '_logged_video_script_call', 'create_vertical_news_slide', 'fold_vietnamese', 'generate_gemini_pro_video_script', 'nguage_of_voice', 'render_short_video', 'source_line', 'synthesize_voiceover_audio', 'synthesize_voiceover_audio_async', 'text_script']
+  EXTRA: ['create_capcut_instructions', 'create_title_card']
+app\services\video_remixer.py
+  MISSING: ['_render_remix_sync', '_unspaced_subtitle_chunks', 'create_remix_overlay_graphic', 'remix_from_original_video', 'remix_from_photos_slideshow']
+  EXTRA: []
+app\services\voice_studio.py
+  MISSING: ['__init__', '_clamp', '_edge_stream', '_is_lead', '_job_progress', '_job_task_done', '_learn_vieneu_speed', '_mark_cancelled', '_mark_downloaded', '_model_cache_mb', '_ready_marker', '_render_vieneu_blocking', '_run_job_inner', '_vieneu_chunks', 'ble', 'clean_text', 'cleanup_old_outputs', 'counted', 'finish_audio', 'models_downloaded', 'n_manage_profile', 'n_use_profile', 'ncel_job', 'normalize_key', 'prepare_reference', 'preview_snippet', 'probe_seconds', 'progress_view', 'render', 'report', 'vieneu_presets']
+  EXTRA: ['_generate_fallback_audio', 'can_manage_profile', 'can_use_profile', 'cancel_job', 'list_preset_voices', 'synthesize_voiceover_audio_async']
+app\services\web_news_collector.py
+  MISSING: ['_get_html', 'logger', 'nnel', 'published_time', 'rse_article', 'rticle_links', 'search']
+  EXTRA: ['article_links', 'parse_article', 'sync_web_sources_async']
+app\telegram_login.py
+  MISSING: ['in']
+  EXTRA: ['send_code_request', 'verify_login_code']
+app\web\auth.py
+  MISSING: ['clear_login_failures', 'login_is_locked', 'record_login_failure', 'role_checker', 'user_can_edit']
+  EXTRA: ['checker', 'require_admin', 'require_editor', 'set_session_cookie']
+app\web\routes\api_routes.py
+  MISSING: ['_create_video', 'download_media_item_from_source', 'i_assist_endpoint', 'i_history_endpoint', 'i_media_history', 'i_media_job', 'i_media_start', 'resolve_data_path']
+  EXTRA: ['AiActionRequest', 'AiAssistRequest', 'AiMediaRequest', 'CustomVideoRenderRequest', 'EditorVoiceoverRequest', 'PostIdRequest', 'PublishVideoRequest', 'VideoRequest', 'ai_action_endpoint', 'ai_assist_endpoint', 'ai_history_endpoint', 'ai_media_endpoint', 'ai_media_history_endpoint', 'ai_media_job_status', 'redownload_media_item', 'video_editor_voiceover_endpoint']
+app\web\routes\audit.py
+  MISSING: ['udit_view']
+  EXTRA: ['audit_view']
+app\web\routes\benchmark.py
+  MISSING: ['_run_check', 'benchmark_check', 'benchmark_restart', 'nnel']
+  EXTRA: ['restart_benchmark_endpoint', 'run_benchmark_check']
+app\web\routes\dashboard.py
+  MISSING: ['nnel', 'shboard_view']
+  EXTRA: ['dashboard_view']
+app\web\routes\lipsync.py
+  MISSING: ['composite_anchor_endpoint', 'start_render_lipsync', 'upload_custom_avatar']
+  EXTRA: ['CompositeRequest', 'LipsyncRenderRequest', 'composite_talking_video', 'lipsync_view', 'render_lipsync_job', 'upload_avatar']
+app\web\routes\posts.py
+  MISSING: ['_back', '_notify_transition', '_parse_date', '_post_link', 'all', 'my_posts', 'nnel', 'ssign_post_action', 've_edited_text_action']
+  EXTRA: ['assign_post_action', 'my_posts_shortcut', 'page_qs', 'save_edited_text_action']
+app\web\routes\settings_routes.py
+  MISSING: ['_clean_provider', '_routes_by_task', '_telegram_page_context', 'create_ai_key', 'create_publish_target', 'delete_ai_key', 'delete_publish_target', 'i_config_page', 'list_ai_models', 'nnel', 'telegram_send_code', 'telegram_sync_now', 'telegram_verify_code', 'test_direct_key', 'test_existing_ai_key', 'toggle_ai_key', 'toggle_publish_target', 'update_ai_key', 've_ai_routes', 've_auto_video_settings']
+  EXTRA: ['ai_config_page', 'ai_key_create', 'ai_key_delete', 'ai_key_test_by_id', 'ai_key_test_direct', 'ai_key_toggle', 'ai_routes_save', 'auto_video_save', 'get_ai_models', 'publish_target_create', 'publish_target_delete', 'publish_target_toggle', 'settings_system_check_update', 'settings_system_lan', 'settings_system_restart', 'settings_telegram_send_code', 'settings_telegram_sync', 'settings_telegram_verify', 'system_settings_view']
+app\web\routes\setup_routes.py
+  MISSING: ['_back', 'dmin', 'nnel']
+  EXTRA: []
+app\web\routes\sources.py
+  MISSING: ['delete_source', 'nnel', 'set_source_quota', 'sync_rss_action', 'toggle_source']
+  EXTRA: ['delete_source_endpoint', 'sync_rss_endpoint', 'toggle_source_endpoint', 'update_source_quota']
+app\web\routes\system_routes.py
+  MISSING: ['_log', 'check_update', 'diagnostics_zip', 'restart', 'set_lan']
+  EXTRA: ['download_diagnostics_zip', 'maintenance_run_action']
+app\web\routes\topics.py
+  MISSING: []
+  EXTRA: ['delete_topic']
+app\web\routes\users.py
+  MISSING: ['my_password_page', 'my_password_submit', 'my_telegram_link', 'my_telegram_unlink']
+  EXTRA: ['change_own_password', 'change_password_page', 'link_own_telegram', 'unlink_own_telegram']
+app\web\routes\videos.py
+  MISSING: ['list_preset_avatars', 'nnel', 'video_editor_view']
+  EXTRA: []
+app\web\routes\voice.py
+  MISSING: ['_post_text', 'x_chars']
+  EXTRA: ['voice_profiles_list']
+app\web\templating.py
+  MISSING: ['ke_templates']
+  EXTRA: ['CompatibleJinja2Templates', 'TemplateResponse']

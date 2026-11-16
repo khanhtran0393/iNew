@@ -1,0 +1,40 @@
+
+### app\init_db.py
+FUNCTIONS: AppSetting, encrypt_plaintext_secrets, ensure_schema_columns, init_db, nnel, seed_database, sh_password, verify_password
+STRINGS: ["random", "utf-8", "pbkdf2:sha256:100000$", "pbkdf2:sha256:", "ser", "lt_topics", "lt_settings", "rceChannel", "rce", "rces", "Quản Trị Viên (Admin)", "Biên Tập Viên (Editor)", "posts:view", "posts:claim", "posts:edit", "posts:verify", "posts:review", "ai:use", "sources:view", "media:download", "Trưởng Ban (Duyệt bài, giao việc)", "posts:*", "posts:approve", "posts:assign", "ai:use", "audit:view", "Nhân Viên Theo Dõi (Lọc tin)", "posts:view", "posts:skip", "sources:view"]
+
+### app\main.py
+FUNCTIONS: health_components, health_live, health_ready, http_exception_redirect_handler, license_gate, license_router, lifespan, outbox_worker_loop, query, root_redirect, rss_sync_worker_loop, start_bot, stop_bot
+STRINGS: ["tbox_worker_loop", "Outbox Dispatcher background worker started.", "tbox", "Error in outbox dispatcher: ", "tbox_worker_loop", "app.services.rss_collector", "RSS Mainstream News Collector background worker started.", "RSS Sync finished: +", " new, ", "plicate", " duplicates.", "Error in RSS sync worker: ", "Chưa có token bot.", "Failed to start Telegram Bot: ", "Token bot không dùng được: ", "app.services", "sername", "sername", "p_bot_handlers", "Telegram Editorial Bot @", " polling started.", "Bot @", " đang chạy.", "re_setup_flag", "tbox_task", "to_video_worker_loop", "p_worker_loop", "pdate_check_loop", "Starting ", "..."]
+
+### app\services\ai_key_router.py
+FUNCTIONS: dd, find_best_ai_key, get_purpose_meta, is_circuit_open, record_key_usage, resolve_candidates, test_ai_key, test_gemini_api_key, trip_circuit_breaker
+STRINGS: ["ter", "rpose", "te", "tes", "rpose", "app.models", "te", "te", "rn", "resolve_candidates.<locals>.add", "resolve_candidates.<locals>", "ery", "sage_count", "rpose", "it_open", "resolve_candidates.<locals>", "resolve_candidates.<locals>.<genexpr>", "it_open", "it_breaker", "Circuit tripped for AI Key #", " (", "). Suspended for ", "s.", "rpose_meta", "⚡", "Nhiệm vụ tùy chỉnh", "ggested_instruction", "rpose", "sage", "tc"]
+
+### app\services\auto_video_service.py
+FUNCTIONS: _get, _set, _utcnow, create_video_for_post, get_auto_video_config, is_source_deleted, pick_auto_video_candidates, run_auto_video_cycle, set_auto_video_config, uto_video_worker_loop, workflow_status
+STRINGS: ["to_video_service", "tcnow", "tc", "ery", "to_video_config", "to_video_max_per_hour", "to_video_enabled", "to_video_only_with_media", "to_video_config", "to_video_candidates", "ery", "tcnow", "rs", "rce_deleted", "age", "te_smart_video_remix", "app.services.video_remixer", "te_smart_video_remix", "te_smart_video_remix", "ccess", "Không tìm thấy bài viết", "Video render crashed for post #", "Lỗi tạo video: ", "mps", "re_ascii", "Lỗi tạo video", "ccess", "n_auto_video_cycle", "dget", "lt"]
+
+### app\services\editorial_workflow.py
+FUNCTIONS: _other_approvers_exist, _utcnow, check_transition, claim_post_atomic, get_workflow_statistics, rchive_old_posts, s_perm, ssign_post, update_post_status
+STRINGS: ["tcnow", "tc", "ser", "ser", "ery", "blished_url", "rrent", "rl", "Không thể chuyển từ '", "' sang '", "'.", "ser_id", "Lưu trữ được thực hiện tự động sau 30 ngày.", "Chỉ Admin được khôi phục bài từ kho lưu trữ.", "Bạn không có quyền bỏ qua tin.", "Chỉ người đang phụ trách hoặc Trưởng ban được bỏ qua bài đã nhận.", "Bắt buộc nhập lý do khi bác bỏ tin.", "Chỉ Trưởng ban / Admin được duyệt bài.", "Không được tự duyệt bài do chính mình biên tập. Hãy nhờ Trưởng ban / Admin khác duyệt.", "Chỉ Trưởng ban / Admin được trả bài về sửa.", "Bắt buộc nhập nhận xét khi trả bài về sửa.", "Bạn không có quyền thao tác bài viết.", "Bài đang do người khác phụ trách. Chỉ người phụ trách hoặc Trưởng ban được thao tác.", "Cần lưu nội dung biên tập trước khi gửi duyệt.", "http://", "https://", "Bắt buộc nhập link bài đã đăng (bắt đầu bằng http:// hoặc https://).", "Chỉ Trưởng ban / Admin được mở lại tin đã bỏ qua hoặc bác bỏ.", "ser_id", "ser"]
+
+### app\services\multi_platform_publisher.py
+FUNCTIONS: _clip, build_telegram_caption, dispatch_video_to_targets, publish_video_to_facebook, publish_video_to_telegram
+STRINGS: ["lti_platform_publisher", "…", "<lambda>", "build_telegram_caption.<locals>.<lambda>", "<lambda>", "build_telegram_caption.<locals>", "ild_telegram_caption", "llets", "rce_title", "rce_url", "rce_line", "pper", "llet_1", "llet_2", "llet_3", "#TinNong #ThoiSu #iNew", "rce", "Báo Chính Thống", "rce_url", "http://", "https://", "<a href=\"", "ote", "\">", "</a>", "🔴 <b>", "</b>\n\n", "\n\n", "📌 <b>Điểm tin cốt lõi:</b>\n", "🌐 <i>Nguồn tin: "]
+
+### app\services\video_remixer.py
+FUNCTIONS: _local_media_paths, _render_remix_sync, _unspaced_subtitle_chunks, create_remix_overlay_graphic, execute_smart_video_remix, format_time, generate_srt_subtitles, get_media_duration_seconds, remix_from_original_video, remix_from_photos_slideshow
+STRINGS: ["ration_seconds", "-v", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", "bprocess", "rce_title", "tput_png", "age", "ages", "rce_line", "app.services", "ages", "ages", "app.services.video_producer", "rce_line", "rce_line", "nded_rectangle", "tline", "Error creating remix overlay: ", "tput_mp4", "ration", "dio", "-select_streams", "a:0", "stream=codec_name", "-y", "-stream_loop", "-1"]
+
+### app\web\routes\posts.py
+FUNCTIONS: _back, _notify_transition, _parse_date, _post_link, all, claim_post_action, my_posts, news_feed_view, nnel, post_detail_view, ssign_post_action, update_status_action, ve_edited_text_action
+STRINGS: ["tes.posts", "rl", "/posts/", "rlencode", "rl", "s_code", "%Y-%m-%d", "est", "rce_id", "rrent_user", "ery", "rce_id", "rces", "ery", "rce", "ser", "rce_id", "rce", "rce_channel_id", "ser_id", "rce_url", "rs", "nt", "rceChannel", "ll_name", "feed.html", "rrent_user", "rces", "s_labels", "<lambda>"]
+
+### app\web\routes\settings_routes.py
+FUNCTIONS: _clean_provider, _routes_by_task, _telegram_page_context, create_ai_key, create_publish_target, delete_ai_key, delete_publish_target, i_config_page, list_ai_models, nnel, telegram_send_code, telegram_settings_page, telegram_sync_now, telegram_verify_code, test_direct_key, test_existing_ai_key, toggle_ai_key, toggle_publish_target, update_ai_key, ve_ai_routes, ve_auto_video_settings
+STRINGS: ["tes.settings_routes", "stom", "est", "rrent_user", "blishTarget", "to_video_config", "blish_targets", "to_video_config", "nc", "tc", "sage_rows", "sage", "ery", "rpose_meta", "rpose", "app.models", "blishTarget", "blishTarget", "app.services.auto_video_service", "to_video_config", "to_video_config", "nc", "nc", "app.services.ai_copilot", "tc", "tc", "app.config", "ll_name", "nt", "ccess"]
+
+### app\web\routes\users.py
+FUNCTIONS: create_user, my_password_page, my_password_submit, my_telegram_link, my_telegram_unlink, reset_user_password, toggle_user, users_view
+STRINGS: ["tes.users", "sers_view", "est", "rrent_user", "sers", "ery", "users.html", "rrent_user", "sers", "est", "sers_view", "ser", "sername", "ll_name", "ser_id", "rrent_user", "sername", "ser", "sername", "/users", "rl", "s_code", "app.services.licensing", "/users?err=limit", "sername", "ll_name", "ser_id", "ser", "ser", "ser_id"]

@@ -1,0 +1,145 @@
+{% extends "layout.html" %}
+
+{% block title %}Kho Tin Tức — iNew{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-[#1C1C1E]">Kho Tin Tức Đa Kênh</h1>
+            <p class="text-sm text-[#8A8A8E] mt-0.5">{{ total }} tin khớp bộ lọc</p>
+        </div>
+        <div class="flex gap-2 text-xs">
+            <a href="/feed?assignee=me&status=active" class="px-3 py-2 rounded-xl border {{ 'bg-indigo-600 border-indigo-500 text-white' if f.assignee == 'me' else 'bg-white border-[#D9D9DE] text-[#3C3C43]' }}">👤 Bài của tôi</a>
+            <a href="/feed?status=new&assignee=none" class="px-3 py-2 rounded-xl border bg-white border-[#D9D9DE] text-[#3C3C43]">🆕 Tin chưa ai nhận</a>
+            <a href="/feed?status=reviewing" class="px-3 py-2 rounded-xl border bg-white border-[#D9D9DE] text-[#3C3C43]">📤 Chờ duyệt</a>
+        </div>
+    </div>
+
+    {% if request.query_params.get('err') %}
+    <div class="p-3 rounded-xl bg-rose-50 border border-rose-700/60 text-rose-700 text-sm">⚠️ {{ request.query_params.get('err') }}</div>
+    {% endif %}
+
+    <!-- Search & Filters -->
+    <form method="GET" action="/feed" class="glass-panel p-4 rounded-2xl grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 text-xs">
+        <input type="search" name="q" value="{{ f.q }}" placeholder="🔎 Tìm từ khóa trong tin, bản dịch, link..."
+            class="col-span-2 md:col-span-4 lg:col-span-3 px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E]">
+        <select name="status" class="px-2.5 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E]">
+            <option value="active" {{ 'selected' if f.status == 'active' else '' }}>Đang hoạt động</option>
+            <option value="all" {{ 'selected' if f.status == 'all' else '' }}>Mọi trạng thái</option>
+            {% for key, label in status_labels.items() %}
+            <option value="{{ key }}" {{ 'selected' if f.status == key else '' }}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <select name="topic_id" class="px-2.5 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E]">
+            <option value="">Mọi chủ đề</option>
+            {% for topic in topics %}<option value="{{ topic.id }}" {{ 'selected' if selected_topic_id == topic.id else '' }}>{{ topic.name }}</option>{% endfor %}
+        </select>
+        <select name="source_id" class="px-2.5 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E]">
+            <option value="">Mọi nguồn</option>
+            {% for s in sources %}<option value="{{ s.id }}" {{ 'selected' if f.source_id == s.id else '' }}>{{ s.title }}</option>{% endfor %}
+        </select>
+        <select name="assignee" class="px-2.5 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E]">
+            <option value="">Mọi người phụ trách</option>
+            <option value="me" {{ 'selected' if f.assignee == 'me' else '' }}>Bài của tôi</option>
+            <option value="none" {{ 'selected' if f.assignee == 'none' else '' }}>Chưa ai nhận</option>
+            {% for u in staff %}<option value="{{ u.id }}" {{ 'selected' if f.assignee == u.id|string else '' }}>{{ u.full_name }}</option>{% endfor %}
+        </select>
+        <label class="flex items-center gap-1 text-[#8A8A8E]">Từ <input type="date" name="date_from" value="{{ f.date_from }}" class="flex-1 px-2 py-1.5 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E]"></label>
+        <label class="flex items-center gap-1 text-[#8A8A8E]">Đến <input type="date" name="date_to" value="{{ f.date_to }}" class="flex-1 px-2 py-1.5 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E]"></label>
+        <label class="flex items-center gap-1.5 text-[#3C3C43]"><input type="checkbox" name="media" value="yes" {{ 'checked' if f.media == 'yes' else '' }} class="rounded bg-white border-[#D9D9DE]"> Có ảnh/video</label>
+        <div class="flex gap-2 col-span-2 md:col-span-1 lg:col-span-2">
+            <button type="submit" class="flex-1 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold">Lọc</button>
+            <a href="/feed" class="px-3 py-2 rounded-xl bg-[#EFEFF4] border border-[#D9D9DE] text-[#3C3C43]">Xóa lọc</a>
+        </div>
+    </form>
+
+    <!-- Posts Feed Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for post in posts %}
+        <div class="glass-panel p-4 rounded-2xl flex flex-col justify-between hover:border-[#D9D9DE] transition relative">
+            <div>
+                <!-- Source & Time -->
+                <div class="flex items-center justify-between text-xs text-[#8A8A8E] mb-2">
+                    <span class="font-semibold text-blue-700 truncate max-w-[180px]">{{ post.source.title if post.source else 'Kênh' }}</span>
+                    <span>{{ post.created_at.strftime('%H:%M %d/%m') }}</span>
+                </div>
+
+                <!-- Status Badges -->
+                <div class="flex flex-wrap items-center gap-1.5 mb-2.5">
+                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider
+                        {% if post.workflow_status == 'new' %}bg-blue-50 text-blue-700 border border-blue-200
+                        {% elif post.workflow_status == 'claimed' %}bg-indigo-50 text-indigo-700 border border-indigo-200
+                        {% elif post.workflow_status == 'verifying' %}bg-amber-50 text-amber-700 border border-amber-200
+                        {% elif post.workflow_status == 'editing' %}bg-purple-50 text-purple-700 border border-purple-200
+                        {% elif post.workflow_status == 'reviewing' %}bg-yellow-50 text-yellow-700 border border-yellow-200
+                        {% elif post.workflow_status == 'approved' %}bg-emerald-50 text-emerald-700 border border-emerald-200
+                        {% elif post.workflow_status == 'completed' %}bg-emerald-100 text-emerald-700 border border-emerald-700
+                        {% elif post.workflow_status in ['skipped', 'archived'] %}bg-[#EFEFF4] text-[#8A8A8E] border border-[#D9D9DE]
+                        {% else %}bg-rose-100 text-rose-700 border border-rose-200{% endif %}">
+                        {{ status_labels.get(post.workflow_status, post.workflow_status) }}
+                    </span>
+
+                    {% if post.has_media %}
+                    <span class="px-1.5 py-0.5 rounded bg-[#EFEFF4] text-[#3C3C43] border border-[#D9D9DE] text-[10px]">
+                        📸 Media ({{ post.media_count }})
+                    </span>
+                    {% endif %}
+
+                    {% if post.article_text %}
+                    <span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px]">
+                        📄 Toàn văn
+                    </span>
+                    {% endif %}
+
+                    {% if post.status == 'duplicate' %}
+                    <span class="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 text-[10px]">
+                        ⚠️ Trùng ({{ post.dedupe_score }}%)
+                    </span>
+                    {% endif %}
+                </div>
+
+                <!-- Text Snippet: opens the post (full article for newspapers) -->
+                <a href="/posts/{{ post.id }}" class="block text-xs text-[#1C1C1E] line-clamp-4 leading-relaxed mb-4 hover:text-blue-700">
+                    {{ post.original_text or '[Tin đính kèm media/video, không có văn bản]' }}
+                </a>
+            </div>
+
+            <!-- Footer: Assigned user & Actions -->
+            <div class="pt-3 border-t border-[#ECECEE] flex items-center justify-between text-xs">
+                <div class="text-[#8A8A8E] truncate max-w-[140px]">
+                    {% if post.assigned_user %}
+                    <span class="text-indigo-700 font-medium">👤 {{ post.assigned_user.full_name }}</span>
+                    {% else %}
+                    <span class="text-[#AEAEB2]">Chưa ai nhận</span>
+                    {% endif %}
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    {% if post.workflow_status == 'new' and can_claim %}
+                    <form action="/posts/{{ post.id }}/claim" method="POST" class="inline">
+                        <button type="submit" class="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-[11px] transition">
+                            Nhận xử lý
+                        </button>
+                    </form>
+                    {% endif %}
+                    <a href="/posts/{{ post.id }}" class="px-2.5 py-1 rounded-lg bg-[#EFEFF4] hover:bg-[#E5E5EA] text-[#1C1C1E] border border-[#D9D9DE] font-medium text-[11px] transition">
+                        {{ 'Đọc bài' if post.article_text else 'Chi tiết' }}
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-span-full text-center py-12 glass-panel rounded-2xl text-[#AEAEB2] text-sm">
+            Không tìm thấy bài viết nào phù hợp với bộ lọc hiện tại.
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="flex justify-between text-xs">
+        {% if page > 1 %}<a href="/feed?{{ page_qs(page - 1) }}" class="px-3 py-2 rounded-xl bg-white border border-[#D9D9DE]">‹ Trang trước</a>{% else %}<span></span>{% endif %}
+        <span class="text-[#AEAEB2] self-center">Trang {{ page }}</span>
+        {% if has_next %}<a href="/feed?{{ page_qs(page + 1) }}" class="px-3 py-2 rounded-xl bg-white border border-[#D9D9DE]">Trang sau ›</a>{% else %}<span></span>{% endif %}
+    </div>
+</div>
+{% endblock %}

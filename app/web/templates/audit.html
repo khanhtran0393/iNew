@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+
+{% block title %}Nhật Ký Thao Tác — iNew{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+    <div>
+        <h1 class="text-2xl font-bold tracking-tight text-[#1C1C1E]">Nhật Ký Thao Tác</h1>
+        <p class="text-sm text-[#8A8A8E] mt-0.5">Ai đã làm gì, với bài nào, lúc nào ({{ total }} bản ghi). Không thể sửa hay xóa.</p>
+    </div>
+
+    <form method="GET" action="/audit" class="glass-panel p-3 rounded-2xl flex flex-wrap items-center gap-2 text-xs">
+        <select name="user_id" class="px-2.5 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E]">
+            <option value="">Mọi nhân viên</option>
+            {% for u in staff %}<option value="{{ u.id }}" {{ 'selected' if f.user_id == u.id else '' }}>{{ u.full_name }}</option>{% endfor %}
+        </select>
+        <select name="action" class="px-2.5 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E]">
+            <option value="">Mọi thao tác</option>
+            {% for key, label in action_labels.items() %}<option value="{{ key }}" {{ 'selected' if f.action == key else '' }}>{{ label }}</option>{% endfor %}
+            {% for key, label in status_labels.items() %}<option value="{{ key }}" {{ 'selected' if f.action == key else '' }}>→ {{ label }}</option>{% endfor %}
+        </select>
+        <input type="number" name="post_id" value="{{ f.post_id or '' }}" placeholder="Mã bài #" class="w-24 px-2.5 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E]">
+        <select name="days" class="px-2.5 py-2 rounded-xl bg-white border border-[#D9D9DE] text-[#1C1C1E]">
+            {% for d, label in [(1, '24 giờ'), (7, '7 ngày'), (30, '30 ngày'), (0, 'Tất cả')] %}<option value="{{ d }}" {{ 'selected' if f.days == d else '' }}>{{ label }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold">Lọc</button>
+    </form>
+
+    <div class="glass-panel rounded-2xl overflow-x-auto custom-scroll">
+        <table class="w-full text-left text-xs">
+            <thead>
+                <tr class="border-b border-[#ECECEE] text-[#8A8A8E] uppercase tracking-wider text-[11px]">
+                    <th class="py-3 px-3">Thời gian (UTC)</th>
+                    <th class="py-3 px-3">Nhân viên</th>
+                    <th class="py-3 px-3">Bài</th>
+                    <th class="py-3 px-3">Thao tác</th>
+                    <th class="py-3 px-3">Ghi chú</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[#E5E5EA]/60">
+                {% for log in logs %}
+                <tr class="hover:bg-white/70">
+                    <td class="py-2.5 px-3 text-[#8A8A8E] whitespace-nowrap">{{ log.created_at.strftime('%H:%M %d/%m/%Y') }}</td>
+                    <td class="py-2.5 px-3 text-[#1C1C1E] whitespace-nowrap">{{ log.user.full_name if log.user else 'Hệ thống / Bot' }}</td>
+                    <td class="py-2.5 px-3"><a href="/posts/{{ log.raw_post_id }}" class="text-blue-700 hover:underline">#{{ log.raw_post_id }}</a></td>
+                    <td class="py-2.5 px-3 whitespace-nowrap">
+                        {% if log.action in action_labels %}<span class="text-indigo-700">{{ action_labels[log.action] }}</span>
+                        {% else %}<span class="text-[#8A8A8E]">{{ status_labels.get(log.from_status, log.from_status or '') }}</span> → <span class="text-[#1C1C1E] font-semibold">{{ status_labels.get(log.to_status, log.to_status) }}</span>{% endif %}
+                    </td>
+                    <td class="py-2.5 px-3 text-[#3C3C43] max-w-md break-words">{{ log.notes or '' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="py-8 text-center text-[#AEAEB2]">Chưa có thao tác nào trong khoảng này.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="flex justify-between text-xs">
+        {% if page > 1 %}<a href="?user_id={{ f.user_id or '' }}&action={{ f.action }}&post_id={{ f.post_id or '' }}&days={{ f.days }}&page={{ page - 1 }}" class="px-3 py-2 rounded-xl bg-white border border-[#D9D9DE]">‹ Trang trước</a>{% else %}<span></span>{% endif %}
+        {% if has_next %}<a href="?user_id={{ f.user_id or '' }}&action={{ f.action }}&post_id={{ f.post_id or '' }}&days={{ f.days }}&page={{ page + 1 }}" class="px-3 py-2 rounded-xl bg-white border border-[#D9D9DE]">Trang sau ›</a>{% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,108 @@
+{% extends "layout.html" %}
+
+{% block title %}Cài Đặt Ban Đầu — iNew{% endblock %}
+
+{% macro step(num, title, done, active=True) %}
+<div class="flex items-center gap-3 mb-3">
+    <span class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold {{ 'bg-emerald-600 text-white' if done else ('bg-blue-600 text-white' if active else 'bg-[#EFEFF4] text-[#AEAEB2]') }}">{{ '✓' if done else num }}</span>
+    <h2 class="text-base font-semibold {{ 'text-[#1C1C1E]' if active or done else 'text-[#AEAEB2]' }}">{{ title }}</h2>
+</div>
+{% endmacro %}
+
+{% set input = "w-full px-3 py-2 rounded-xl bg-[#F2F2F7] border border-[#D9D9DE] text-sm text-[#1C1C1E] placeholder-[#AEAEB2]" %}
+{% set btn = "px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-5">
+    <div>
+        <h1 class="text-2xl font-bold tracking-tight text-[#1C1C1E]">Chào mừng đến với iNew</h1>
+        <p class="text-sm text-[#8A8A8E] mt-0.5">Chỉ cần <b class="text-[#1C1C1E]">bước 1</b> là dùng được. iNew thu tin từ nhiều nguồn: báo điện tử (RSS hoặc trang web không có RSS), kênh Telegram công khai, và các nguồn bạn thêm ở mục <b class="text-[#1C1C1E]">Nguồn tin</b>.</p>
+        <p class="text-sm text-[#8A8A8E] mt-1">Bước 2–4 dành cho Telegram và <b class="text-[#1C1C1E]">không bắt buộc</b>. Không có tài khoản Telegram, iNew vẫn đọc được kênh công khai qua web, chỉ chậm hơn vài phút. Làm sau cũng được ở mục Telegram.</p>
+    </div>
+
+    {% set q = request.query_params %}
+    {% if q.get('ok') %}<div class="p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-sm text-emerald-700">✓ {{ q.get('ok') }}</div>{% endif %}
+    {% if q.get('err') %}<div class="p-3 rounded-xl border border-rose-200 bg-rose-50 text-sm text-rose-700">✗ {{ q.get('err') }}</div>{% endif %}
+
+    <!-- 1. Admin -->
+    <div class="glass-panel p-5 rounded-2xl">
+        {{ step(1, 'Tạo tài khoản quản trị', admin is not none) }}
+        {% if admin %}
+        <p class="text-sm text-[#8A8A8E]">Đang đăng nhập: <b class="text-[#1C1C1E]">{{ admin.full_name }}</b> ({{ admin.username }}).</p>
+        {% else %}
+        <form method="POST" action="/setup/admin" class="grid sm:grid-cols-2 gap-3">
+            <input name="full_name" required placeholder="Họ tên" class="{{ input }}">
+            <input name="username" required placeholder="Tên đăng nhập (vd: admin)" pattern="[a-z0-9_.]{3,32}" class="{{ input }}">
+            <input name="password" type="password" required minlength="10" placeholder="Mật khẩu (tối thiểu 10 ký tự)" class="{{ input }}">
+            <input name="password2" type="password" required minlength="10" placeholder="Nhập lại mật khẩu" class="{{ input }}">
+            <div class="sm:col-span-2"><button class="{{ btn }}">Tạo tài khoản</button></div>
+        </form>
+        {% endif %}
+    </div>
+
+    <!-- 2. Telegram API -->
+    <div class="glass-panel p-5 rounded-2xl {{ '' if admin else 'opacity-50' }}">
+        {{ step(2, 'Tuỳ chọn: Khóa API Telegram của bạn', api_configured, admin is not none) }}
+        {% if admin %}
+        <ol class="text-xs text-[#8A8A8E] list-decimal ml-5 mb-3 space-y-0.5">
+            <li>Mở <a href="https://my.telegram.org" target="_blank" rel="noopener" class="text-blue-700 underline">my.telegram.org</a>, đăng nhập bằng số điện thoại sẽ dùng để đọc tin.</li>
+            <li>Chọn <b>API development tools</b>, điền tên ứng dụng bất kỳ (vd: iNew), bấm Create.</li>
+            <li>Chép <b>App api_id</b> và <b>App api_hash</b> vào đây.</li>
+        </ol>
+        <form method="POST" action="/setup/telegram-api" class="grid sm:grid-cols-3 gap-3">
+            <input name="api_id" required inputmode="numeric" value="{{ api_id }}" placeholder="api_id (số)" class="{{ input }}">
+            <input name="api_hash" required placeholder="api_hash (32 ký tự)" class="{{ input }} sm:col-span-2 font-mono">
+            <div class="sm:col-span-3"><button class="{{ btn }}">{{ 'Cập nhật' if api_configured else 'Lưu' }}</button></div>
+        </form>
+        {% endif %}
+    </div>
+
+    <!-- 3. Telegram login -->
+    <div class="glass-panel p-5 rounded-2xl {{ '' if admin and api_configured else 'opacity-50' }}">
+        {{ step(3, 'Tuỳ chọn: Đăng nhập tài khoản Telegram đọc tin', tg_state == 'running', admin is not none and api_configured) }}
+        {% if admin and api_configured %}
+            {% if tg_state == 'running' %}
+            <p class="text-sm text-emerald-700">Đã kết nối. iNew sẽ tự tham gia các kênh bạn thêm ở mục Nguồn tin.</p>
+            {% elif code_sent or awaiting_password %}
+            <form method="POST" action="/setup/telegram-login" class="grid sm:grid-cols-3 gap-3">
+                {% if not awaiting_password %}
+                <input name="code" required placeholder="Mã Telegram vừa gửi" class="{{ input }}">
+                {% else %}<input type="hidden" name="code" value="">{% endif %}
+                <input name="password" type="password" placeholder="Mật khẩu 2 bước (nếu có)" class="{{ input }}">
+                <div><button class="{{ btn }}">Đăng nhập</button></div>
+            </form>
+            <p class="mt-2 text-xs text-[#AEAEB2]">Mã do tài khoản "Telegram" gửi trong app Telegram của số điện thoại này.</p>
+            {% else %}
+            <form method="POST" action="/setup/telegram-code" class="flex gap-3">
+                <input name="phone" required placeholder="Số điện thoại, vd 0912345678" class="{{ input }}">
+                <button class="{{ btn }} whitespace-nowrap">Gửi mã</button>
+            </form>
+            <p class="mt-2 text-xs text-[#AEAEB2]">Nên dùng một số điện thoại riêng cho việc đọc tin, đừng dùng số cá nhân.</p>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <!-- 4. Bot -->
+    <div class="glass-panel p-5 rounded-2xl {{ '' if admin else 'opacity-50' }}">
+        {{ step(4, 'Tuỳ chọn: Bot Telegram cảnh báo nhóm biên tập', bot_configured, admin is not none) }}
+        {% if admin %}
+        <ol class="text-xs text-[#8A8A8E] list-decimal ml-5 mb-3 space-y-0.5">
+            <li>Trong Telegram, nhắn cho <a href="https://t.me/BotFather" target="_blank" rel="noopener" class="text-blue-700 underline">@BotFather</a> lệnh <code>/newbot</code>, đặt tên bot.</li>
+            <li>Chép token BotFather gửi lại (dạng <code>123456:ABC...</code>) vào đây.</li>
+        </ol>
+        <form method="POST" action="/setup/bot" class="space-y-3">
+            <input name="bot_token" required placeholder="Token bot" class="{{ input }} font-mono">
+            <input name="public_base_url" value="{{ public_base_url }}" placeholder="Địa chỉ web nhân viên mở được (vd http://192.168.1.10:8000) — không bắt buộc" class="{{ input }}">
+            <button class="{{ btn }}">{{ 'Cập nhật bot' if bot_configured else 'Kết nối bot' }}</button>
+        </form>
+        {% endif %}
+    </div>
+
+    {% if admin %}
+    <form method="POST" action="/setup/finish" class="flex items-center justify-between glass-panel p-5 rounded-2xl">
+        <p class="text-sm text-[#8A8A8E]">Xong rồi? Tiếp theo bạn thêm báo điện tử, trang web, RSS hoặc kênh Telegram cần theo dõi ở mục <b>Nguồn tin</b>.</p>
+        <button class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold whitespace-nowrap">Hoàn tất →</button>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

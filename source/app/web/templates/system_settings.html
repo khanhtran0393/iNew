@@ -1,0 +1,96 @@
+{% extends "layout.html" %}
+
+{% block title %}Cài đặt hệ thống — iNew{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-5">
+    <div>
+        <h1 class="text-2xl font-bold tracking-tight text-[#1C1C1E]">Cài đặt hệ thống</h1>
+        <p class="text-sm text-[#8A8A8E] mt-0.5">Truy cập mạng nội bộ, khởi động lại và cập nhật iNew.</p>
+    </div>
+
+    {% if msg == 'lan' %}
+    <div class="p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-sm text-emerald-700">✓ Đã lưu. Thay đổi có hiệu lực sau khi khởi động lại iNew.</div>
+    {% elif msg == 'restarted' %}
+    <div class="p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-sm text-emerald-700">✓ iNew đã khởi động lại.</div>
+    {% elif msg == 'norestart' %}
+    <div class="p-3 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-700">iNew đang chạy ở chế độ phát triển nên không tự khởi động lại được. Hãy tắt rồi mở lại bằng tay.</div>
+    {% elif msg == 'checked' %}
+    <div class="p-3 rounded-xl border border-blue-200 bg-blue-50 text-sm text-blue-700">Đã kiểm tra cập nhật.</div>
+    {% endif %}
+
+    <!-- LAN access -->
+    <section class="bg-white border border-[#ECECEE] rounded-2xl p-5 space-y-4">
+        <div class="flex items-start gap-3">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EFEFF4] text-xl">🌐</span>
+            <div class="flex-1">
+                <h2 class="text-base font-bold text-[#1C1C1E]">Truy cập từ mạng nội bộ</h2>
+                <p class="mt-1 text-sm text-[#3C3C43] leading-relaxed">Mặc định chỉ máy đang cài iNew mới mở được iNew. Bật lên nếu muốn đồng nghiệp dùng chung qua cùng mạng Wi-Fi / mạng LAN của tòa soạn, mỗi người mở bằng trình duyệt trên máy mình.</p>
+            </div>
+        </div>
+
+        <form method="POST" action="/settings/system/lan" class="flex items-center justify-between gap-3 rounded-xl bg-[#F2F2F7] px-4 py-3">
+            <label for="allow_lan" class="text-sm font-semibold text-[#1C1C1E]">Cho phép máy khác trong mạng nội bộ truy cập</label>
+            <input type="hidden" name="allow_lan" value="off">
+            <input id="allow_lan" type="checkbox" name="allow_lan" value="on" {{ 'checked' if allow_lan }} onchange="this.form.submit()" class="h-5 w-5 accent-blue-500">
+        </form>
+
+        <div class="text-sm text-[#3C3C43] space-y-1.5">
+            <p>Trạng thái hiện tại:
+                {% if running_lan %}<b class="text-emerald-700">đang mở cho mạng nội bộ</b>{% else %}<b class="text-[#1C1C1E]">chỉ máy này</b>{% endif %}
+                {% if allow_lan != running_lan %}<span class="text-amber-700"> · cần khởi động lại để áp dụng</span>{% endif %}
+            </p>
+            {% if allow_lan %}
+            <p class="text-[#8A8A8E]">Đồng nghiệp mở một trong các địa chỉ sau (máy cài iNew phải đang bật):</p>
+            <ul class="space-y-1">
+                {% for url in lan_urls %}
+                <li class="font-mono text-cyan-700 select-all">{{ url }}</li>
+                {% else %}
+                <li class="text-[#8A8A8E]">Không tìm thấy địa chỉ mạng nội bộ. Hãy kiểm tra máy đã kết nối Wi-Fi / mạng LAN.</li>
+                {% endfor %}
+            </ul>
+            <p class="text-xs text-[#8A8A8E]">Lần đầu bật, Windows / macOS có thể hỏi cho phép iNew dùng mạng: hãy chọn <b>Cho phép</b> (mạng riêng / Private).</p>
+            {% endif %}
+        </div>
+
+        <form method="POST" action="/settings/system/restart" onsubmit="return confirm('Khởi động lại iNew ngay? Các tác vụ đang chạy (dựng video, tạo giọng) sẽ bị dừng.');">
+            <button class="px-4 py-2 rounded-xl bg-[#EFEFF4] hover:bg-[#E5E5EA] border border-[#D9D9DE] text-sm font-semibold text-[#1C1C1E]" {{ '' if can_restart else 'disabled' }}>🔄 Khởi động lại iNew</button>
+            {% if not can_restart %}<span class="ml-2 text-xs text-[#8A8A8E]">(chế độ phát triển: hãy khởi động lại bằng tay)</span>{% endif %}
+        </form>
+    </section>
+
+    <!-- Updates -->
+    <section id="cap-nhat" class="bg-white border border-[#ECECEE] rounded-2xl p-5 space-y-4">
+        <div class="flex items-start gap-3">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EFEFF4] text-xl">⬆️</span>
+            <div class="flex-1">
+                <h2 class="text-base font-bold text-[#1C1C1E]">Phiên bản &amp; cập nhật</h2>
+                <p class="mt-1 text-sm text-[#3C3C43]">Bạn đang dùng <b>iNew {{ upd.current }}</b>. iNew tự kiểm tra bản mới mỗi 12 giờ và báo ở đầu trang cho Quản trị viên.</p>
+            </div>
+        </div>
+
+        {% if not upd.enabled %}
+        <p class="text-sm text-[#8A8A8E]">Bản iNew này không bật kiểm tra cập nhật.</p>
+        {% elif upd.available %}
+        <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700 space-y-2">
+            <p class="font-semibold">🎉 Đã có iNew {{ upd.latest }}</p>
+            {% if upd.notes %}<pre class="whitespace-pre-wrap font-sans text-[13px] text-[#3C3C43] max-h-60 overflow-y-auto custom-scroll">{{ upd.notes }}</pre>{% endif %}
+            <p>Tải về rồi cài đè lên bản đang dùng. Dữ liệu, tài khoản và key kích hoạt được giữ nguyên.</p>
+            <a href="{{ upd.download_url or upd.url }}" target="_blank" rel="noopener" class="inline-block px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold">Tải bản mới</a>
+        </div>
+        {% elif upd.checked_at and not upd.error %}
+        <p class="text-sm text-emerald-700">✓ Bạn đang dùng bản mới nhất.</p>
+        {% elif upd.error %}
+        <p class="text-sm text-[#8A8A8E]">Chưa kiểm tra được (có thể do mất mạng). iNew sẽ tự thử lại sau.</p>
+        {% else %}
+        <p class="text-sm text-[#8A8A8E]">Chưa kiểm tra lần nào kể từ khi mở iNew.</p>
+        {% endif %}
+
+        {% if upd.enabled %}
+        <form method="POST" action="/settings/system/check-update">
+            <button class="px-4 py-2 rounded-xl bg-[#EFEFF4] hover:bg-[#E5E5EA] border border-[#D9D9DE] text-sm font-semibold text-[#1C1C1E]">Kiểm tra cập nhật</button>
+        </form>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

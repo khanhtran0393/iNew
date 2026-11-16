@@ -1,0 +1,466 @@
+{% extends "layout.html" %}
+{% block title %}Hướng dẫn sử dụng — iNew{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-5">
+
+    <!-- Tiêu đề -->
+    <div>
+        <h1 class="text-2xl font-bold tracking-tight text-[#1C1C1E]">Hướng dẫn sử dụng iNew</h1>
+        <p class="text-sm text-[#8A8A8E] mt-1">Mọi điều bạn cần để cài đặt, kích hoạt và làm việc hằng ngày với iNew, trình bày ngắn gọn theo từng màn hình.</p>
+    </div>
+
+    <!-- Mục lục -->
+    <nav class="bg-white border border-[#ECECEE] rounded-2xl p-6">
+        <h2 class="text-lg font-bold text-[#1C1C1E] mb-3">Mục lục</h2>
+        <ol class="list-decimal pl-5 grid sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm text-[#3C3C43]">
+            <li><a href="#bat-dau" class="hover:text-blue-600">Cài đặt và lần đầu mở iNew</a></li>
+            <li><a href="#kich-hoat" class="hover:text-blue-600">Kích hoạt bản quyền (miễn phí)</a></li>
+            <li><a href="#giao-dien" class="hover:text-blue-600">Làm quen giao diện</a></li>
+            <li><a href="#nguon-tin" class="hover:text-blue-600">Nguồn tin</a></li>
+            <li><a href="#kho-tin" class="hover:text-blue-600">Kho tin tức và quy trình biên tập</a></li>
+            <li><a href="#video" class="hover:text-blue-600">Kho video và Xưởng Video</a></li>
+            <li><a href="#giong-doc" class="hover:text-blue-600">Giọng đọc</a></li>
+            <li><a href="#telegram" class="hover:text-blue-600">Telegram, Chủ đề &amp; Bot</a></li>
+            <li><a href="#ai" class="hover:text-blue-600">Đấu nối AI</a></li>
+            <li><a href="#nhan-vien" class="hover:text-blue-600">Nhân viên và phân quyền</a></li>
+            <li><a href="#du-lieu" class="hover:text-blue-600">Thư mục dữ liệu và sao lưu</a></li>
+            <li><a href="#mang-noi-bo" class="hover:text-blue-600">Dùng chung trong mạng nội bộ</a></li>
+            <li><a href="#cap-nhat" class="hover:text-blue-600">Cập nhật phiên bản mới</a></li>
+            <li><a href="#loi" class="hover:text-blue-600">Sự cố thường gặp</a></li>
+            <li><a href="#lien-he" class="hover:text-blue-600">Hỗ trợ và liên hệ tác giả</a></li>
+        </ol>
+    </nav>
+
+    <!-- 1. Bắt đầu -->
+    <section id="bat-dau" class="bg-white border border-[#ECECEE] rounded-2xl p-6 scroll-mt-6">
+        <h2 class="text-lg font-bold text-[#1C1C1E]">1. Cài đặt và lần đầu mở iNew</h2>
+        <div class="mt-3 space-y-3 text-sm leading-relaxed text-[#3C3C43]">
+            <p>iNew chạy ngay trên máy tính của bạn. Sau khi cài xong và mở iNew, trình duyệt sẽ tự mở trang <b>http://localhost:8000</b>. Đây là địa chỉ để bạn làm việc với iNew trên chính máy này.</p>
+            <p>Lần đầu mở, iNew hiện trang <b>Chào mừng đến với iNew</b>. Chỉ có bước 1 là bắt buộc:</p>
+            <ol class="list-decimal pl-5 space-y-1.5">
+                <li><b>Tạo tài khoản quản trị</b>: nhập Họ tên, Tên đăng nhập (chữ thường, số, dấu chấm hoặc gạch dưới, 3–32 ký tự) và Mật khẩu (tối thiểu 10 ký tự), rồi bấm <b>Tạo tài khoản</b>.</li>
+                <li><b>Tuỳ chọn: Khóa API Telegram của bạn</b>: lấy <b>api_id</b> và <b>api_hash</b> ở trang my.telegram.org, mục API development tools.</li>
+                <li><b>Tuỳ chọn: Đăng nhập tài khoản Telegram đọc tin</b>: nhập số điện thoại, bấm <b>Gửi mã</b>, rồi nhập mã Telegram gửi về (và mật khẩu 2 bước nếu có).</li>
+                <li><b>Tuỳ chọn: Bot Telegram cảnh báo nhóm biên tập</b>: dán token bot do @BotFather cấp.</li>
+                <li>Bấm <b>Hoàn tất →</b>. Tiếp theo, bạn thêm các báo, trang web hoặc kênh Telegram cần theo dõi ở mục <b>Nguồn tin</b>.</li>
+            </ol>
+            <div class="rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm p-3">💡 Bước 2–4 làm sau cũng được, ở mục <b>Telegram</b>. Không có tài khoản Telegram, iNew vẫn đọc được kênh công khai, chỉ chậm hơn vài phút.</div>
+            <div class="rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm p-3"><b>Lưu ý:</b> hãy ghi nhớ tên đăng nhập và mật khẩu quản trị. Nên tạo thêm một tài khoản Quản trị dự phòng (xem mục <a href="#nhan-vien" class="underline hover:text-blue-600">Nhân viên</a>) để có người đặt lại mật khẩu khi cần.</div>
+        </div>
+    </section>
+
+    <!-- 2. Kích hoạt -->
+    <section id="kich-hoat" class="bg-white border border-[#ECECEE] rounded-2xl p-6 scroll-mt-6">
+        <h2 class="text-lg font-bold text-[#1C1C1E]">2. Kích hoạt bản quyền (miễn phí)</h2>
+        <div class="mt-3 space-y-3 text-sm leading-relaxed text-[#3C3C43]">
+            <p>iNew được tặng <b>miễn phí</b> cho cộng đồng làm tin. Để tránh phần mềm bị phát tán tràn lan ngoài tầm kiểm soát, mỗi máy tính cần một <b>mã bản quyền riêng</b>. Mã này dùng <b>trọn đời trên máy đó</b>. Chỉ tài khoản Quản trị mới kích hoạt được.</p>
+            <p class="font-semibold text-[#1C1C1E]">Cách nhận mã qua Telegram (nhanh nhất)</p>
+            <ol class="list-decimal pl-5 space-y-1.5">
+                <li>Mở mục <b>Bản quyền</b> (biểu tượng chìa khóa 🔑).</li>
+                <li>Bấm <b>Nhận key miễn phí qua Telegram</b>. Telegram sẽ mở bot <b>@Kichhoatkey_bot</b>, mã máy của bạn đã được gắn sẵn.</li>
+                <li>Trong Telegram, bấm <b>Start</b> (Bắt đầu).</li>
+                <li>Bot báo đã nhận yêu cầu. Tác giả xem và duyệt từng yêu cầu; được duyệt, bot gửi cho bạn một chuỗi mã bản quyền (có thể phải chờ một lúc).</li>
+                <li>Quay lại trang Bản quyền, dán chuỗi đó vào ô <b>Dán mã bản quyền</b>, rồi bấm <b>Cài đặt mã bản quyền</b>.</li>
+            </ol>
+            <p class="font-semibold text-[#1C1C1E]">Cách gửi tay</p>
+            <p>Nếu nút trên không mở được Telegram, bạn chép dòng <b>Mã máy</b> trên trang Bản quyền, tự mở bot <b>@Kichhoatkey_bot</b> và gửi mã đó cho bot. Các bước còn lại giống như trên.</p>
+            <div class="rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm p-3">💡 Cài lại iNew trên <b>cùng một máy</b> mà vẫn giữ nguyên thư mục dữ liệu thì mã máy không đổi, mã bản quyền cũ vẫn dùng được. Nếu xoá thư mục dữ liệu hoặc chuyển sang máy khác, bạn cần xin mã mới.</div>
+            <div class="rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm p-3">⚠️ Từ bản <b>1.0.6</b>, iNew dùng <b>mã bản quyền mới</b>. Mã cấp trước đó chỉ chạy được bản 1.0.5 trở về trước. Cài 1.0.6 đè lên bản cũ thì dữ liệu vẫn giữ nguyên, bạn chỉ cần xin mã mới theo các bước trên một lần.</div>
+        </div>
+    </section>
+
+    <!-- 3. Giao diện -->
+    <section id="giao-dien" class="bg-white border border-[#ECECEE] rounded-2xl p-6 scroll-mt-6">
+        <h2 class="text-lg font-bold text-[#1C1C1E]">3. Làm quen giao diện</h2>
+        <div class="mt-3 space-y-3 text-sm leading-relaxed text-[#3C3C43]">
+            <p class="font-semibold text-[#1C1C1E]">Thanh điều hướng bên trái</p>
+            <p>Các màn hình được xếp thành ba nhóm. Mỗi người chỉ thấy những mục mà vai trò của mình được dùng.</p>
+            <ul class="list-disc pl-5 space-y-1.5">
+                <li><b>Biên tập</b>: Tổng quan, Kho tin tức, Kho video, Xưởng Video, Giọng đọc.</li>
+                <li><b>Nguồn &amp; tự động</b>: Nguồn tin, Chủ đề &amp; Bot, Telegram, Đấu nối AI.</li>
+                <li><b>Quản trị</b>: Nhật ký, Nhân viên, Hiệu năng, Bản quyền, Cài đặt hệ thống.</li>
+            </ul>
+            <p>Phía dưới thanh bên là <b>Hướng dẫn</b> (trang này), <b>Hỗ trợ</b>, tài khoản của bạn, nút <b>Sáng/Tối</b> và <b>Đăng xuất</b>. Trên điện thoại, các mục chính nằm ở thanh thẻ phía dưới màn hình.</p>
+
+            <p class="font-semibold text-[#1C1C1E]">Màn hình Tổng quan</p>
+            <ul class="list-disc pl-5 space-y-1.5">
+                <li>Bốn ô số liệu: kênh đang theo dõi, tổng bài thu thập (và số tin mới trong ngày), số bài đang xử lý, dung lượng ổ đĩa còn trống.</li>
+                <li><b>Tiến độ quy trình biên tập</b>: số bài ở từng bước. Bấm vào một ô để mở danh sách bài ở bước đó.</li>
+                <li><b>Tin mới nhận gần đây</b> và <b>Trạng thái hệ thống</b>: thu thập Telegram, bot cảnh báo, sao lưu gần nhất, tự tạo video nháp. Dòng <b>Tự động xuất bản</b> luôn ở trạng thái khoá: iNew không bao giờ tự đăng bài.</li>
+                <li>Khi ổ đĩa gần đầy, iNew tạm ngừng tự tải ảnh/video và chỉ lưu chữ kèm đường link. Quản trị viên có thể bấm <b>Dọn dẹp ngay</b> để xoá các tệp ảnh/video quá hạn (thông tin bài vẫn được giữ để tải lại khi cần).</li>
+            </ul>
+
+            <p class="font-semibold text-[#1C1C1E]">Giao diện Sáng / Tối</p>
+            <p>Bấm nút hình mặt trăng / mặt trời để đổi giao diện. Mặc định là giao diện Tối. Lựa chọn của bạn được ghi nhớ riêng trên từng máy, từng trình duyệt.</p>
+
+            <p class="font-semibold text-[#1C1C1E]">Biểu tượng iNew ở khay hệ thống</p>
+            <p>Khi đang chạy, iNew có một biểu tượng nhỏ ở góc dưới bên phải màn hình (Windows) hoặc trên thanh menu góc trên bên phải (macOS). Bấm vào biểu tượng để chọn:</p>
+            <ul class="list-disc pl-5 space-y-1.5">
+                <li><b>Mở iNew</b>: mở lại trang làm việc trên trình duyệt.</li>
+                <li><b>Khởi động lại</b>: tắt rồi bật lại iNew.</li>
+                <li><b>Thoát iNew</b>: tắt hẳn iNew.</li>
+            </ul>
+            <div class="rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm p-3"><b>Lưu ý:</b> đóng thẻ trình duyệt <b>không</b> tắt iNew. iNew vẫn chạy nền để thu tin liên tục. Muốn tắt hẳn, hãy dùng <b>Thoát iNew</b> ở biểu tượng khay.</div>
+        </div>
+    </section>
+
+    <!-- 4. Nguồn tin -->
+    <section id="nguon-tin" class="bg-white border border-[#ECECEE] rounded-2xl p-6 scroll-mt-6">
+        <h2 class="text-lg font-bold text-[#1C1C1E]">4. Nguồn tin</h2>
+        <div class="mt-3 space-y-3 text-sm leading-relaxed text-[#3C3C43]">
+            <p>Đây là nơi khai báo các nguồn mà iNew sẽ theo dõi. iNew nhận ba loại nguồn:</p>
+            <ul class="list-disc pl-5 space-y-1.5">
+                <li><b>Kênh Telegram</b>: dạng <b>@tenkenh</b>, <b>t.me/tenkenh</b>, hoặc link mời kênh riêng tư <b>https://t.me/+...</b>.</li>
+                <li><b>Báo điện tử có RSS</b>: dán link RSS, ví dụ https://vnexpress.net/rss/thoi-su.rss.</li>
+                <li><b>Trang báo không có RSS</b>: dán link trang chủ hoặc trang chuyên mục. iNew tự tìm bài mới trên trang đó 10 phút một lần và lấy toàn văn.</li>
+            </ul>
+            <p class="font-semibold text-[#1C1C1E]">Thêm nguồn (Quản trị viên)</p>
+            <ol class="list-decimal pl-5 space-y-1.5">
+                <li>Ở khung <b>Nhập Nguồn Hàng Loạt</b>, chọn <b>Phân loại vào Chủ đề</b> (không bắt buộc) và <b>Mức độ ưu tiên quét</b>.</li>
+                <li>Dán danh sách vào ô <b>Danh sách kênh</b>, mỗi dòng một nguồn. Hoặc tải lên tệp .txt (mỗi dòng một nguồn) hay .csv.</li>
+                <li>Bấm <b>Tiến Hành Nạp Hàng Loạt</b>. iNew báo số nguồn thêm mới, số nguồn đã có và số dòng không hợp lệ.</li>
+            </ol>
+            <p class="font-semibold text-[#1C1C1E]">Quản lý danh sách nguồn</p>
+            <ul class="list-disc pl-5 space-y-1.5">
+                <li>Bảng <b>Danh Sách Kênh Nguồn</b> cho biết chủ đề, trạng thái Bật/Tắt, thời điểm có tin cuối cùng, số lần lỗi và dung lượng ảnh/video của từng nguồn.</li>
+                <li>Quản trị viên có thể đặt giới hạn dung lượng cho mỗi nguồn (0 là không giới hạn), bấm <b>Tắt</b> để tạm ngừng thu, hoặc <b>Xóa</b> nguồn.</li>
+                <li>Nút <b>Quét Cập Nhật Báo Chí Ngay</b> buộc iNew đọc lại các báo ngay lập tức, không phải chờ lượt quét kế tiếp.</li>
+            </ul>
+            <div class="rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm p-3"><b>Lưu ý:</b> khi <b>Xóa</b> một nguồn, các tin chưa ai xử lý của nguồn đó sẽ bị xoá cùng ảnh/video. Các tin nhân viên đã làm vẫn được giữ lại. Nếu chỉ muốn ngừng thu thập, hãy bấm <b>Tắt</b> thay vì Xóa.</div>
+        </div>
+    </section>
+
+    <!-- 5. Kho tin -->
+    <section id="kho-tin" class="bg-white border border-[#ECECEE] rounded-2xl p-6 scroll-mt-6">
+        <h2 class="text-lg font-bold text-[#1C1C1E]">5. Kho tin tức và quy trình biên tập</h2>
+        <div class="mt-3 space-y-3 text-sm leading-relaxed text-[#3C3C43]">
+            <p class="font-semibold text-[#1C1C1E]">Tìm và lọc tin</p>
+            <p>Kho tin tức chứa mọi tin iNew thu được. Ba lối tắt ở trên cùng: <b>Bài của tôi</b>, <b>Tin chưa ai nhận</b>, <b>Chờ duyệt</b>. Bạn còn có thể tìm theo từ khoá và lọc theo trạng thái, chủ đề, nguồn, người phụ trách, khoảng ngày, hoặc chỉ tin có ảnh/video. Tin trùng nội dung với tin khác được gắn nhãn <b>Trùng</b> kèm tỉ lệ phần trăm.</p>
+
+            <p class="font-semibold text-[#1C1C1E]">Các bước của một bài</p>
+            <p>Màn hình Tổng quan hiển thị 7 bước. Trên trang chi tiết bài, một vài bước có tên ngắn hơn:</p>
+            <ol class="list-decimal pl-5 space-y-1.5">
+                <li><b>Mới nhận</b> (Mới): tin vừa về, chưa ai nhận.</li>
+                <li><b>Đã nhận việc</b> (Đã nhận): một người đã bấm Nhận xử lý, bài được khoá cho riêng người đó.</li>
+                <li><b>Xác minh</b> (Đang xác minh): cần kiểm chứng thêm thông tin.</li>
+                <li><b>Đang biên tập</b>: đang viết, dịch hoặc dựng video.</li>
+                <li><b>Chờ duyệt</b>: đã biên tập xong, chờ Trưởng ban hoặc Quản trị viên duyệt.</li>
+                <li><b>Đã duyệt</b>: được phép đăng.</li>
+                <li><b>Hoàn thành</b> (Đã đăng): đã đăng và có link bài đã đăng.</li>
+            </ol>
+            <p>Ngoài ra còn ba trạng thái phụ: <b>Bỏ qua</b> (tin không có giá trị đăng), <b>Bác bỏ</b> (tin giả, vi phạm, chưa kiểm chứng được; bắt buộc ghi lý do) và <b>Lưu trữ</b> (bài đã đăng, bỏ qua hoặc bác bỏ sẽ tự chuyển vào lưu trữ sau 30 ngày).</p>
+
+            <p class="font-semibold text-[#1C1C1E]">Làm một bài từ đầu đến cuối</p>
+            <ol class="list-decimal pl-5 space-y-1.5">
+                <li>Trong Kho tin tức, bấm <b>Nhận xử lý</b> trên tin bạn muốn làm, hoặc bấm <b>Chi tiết</b> rồi bấm <b>📌 Nhận xử lý</b>.</li>
+                <li>Nếu cần kiểm chứng, bấm <b>🔍 Cần xác minh</b>. Khi sẵn sàng viết, bấm <b>✍️ Bắt đầu biên tập</b>.</li>
+                <li>Viết nội dung vào ô <b>Bản dịch / Nội dung hoàn chỉnh</b>, ghi chú nguồn đối chiếu vào ô <b>Ghi chú xác minh &amp; Bản quyền</b>, rồi bấm <b>Lưu Nội Dung Biên Tập</b>.</li>
+                <li>Bấm <b>📤 Gửi chờ duyệt</b>. Bạn phải lưu nội dung trước thì mới gửi duyệt được.</li>
+                <li>Trưởng ban hoặc Quản trị viên mở bài và bấm <b>✅ Phê duyệt</b>, hoặc nhập nhận xét rồi bấm <b>↩️ Trả bài về sửa</b>. Nhận xét sẽ hiện ở đầu trang bài cho người viết đọc.</li>
+                <li>Sau khi đăng bài ở nơi khác, người phụ trách dán link bài đã đăng (bắt đầu bằng http:// hoặc https://) và bấm <b>🏁 Xác nhận đã đăng</b>.</li>
+            </ol>
+            <ul class="list-disc pl-5 space-y-1.5">
+                <li><b>↩️ Trả bài</b> trả tin về hàng chờ cho người khác nhận. <b>Lùi một bước</b> đưa bài về bước trước.</li>
+                <li><b>⏭ Bỏ qua (không giá trị)</b> và <b>🚫 Bác bỏ</b> dùng cho tin không đăng. Bác bỏ bắt buộc ghi lý do.</li>
+                <li>Trưởng ban và Quản trị viên dùng khung <b>Giao bài cho</b> rồi bấm <b>👤 Giao việc</b> để phân công, và có thể bấm <b>♻️ Mở lại tin</b> với tin đã bỏ qua hoặc bác bỏ. Chỉ Quản trị viên mở lại được tin đã lưu trữ.</li>
+                <li>Mỗi thao tác được ghi lại ở khung <b>Lịch Sử Thao Tác</b> cuối trang bài.</li>
+            </ul>
+            <div class="rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm p-3"><b>Lưu ý:</b> bạn không được tự duyệt bài do chính mình biên tập, trừ khi tòa soạn không còn Trưởng ban hay Quản trị viên nào khác. Chỉ người đang phụ trách bài (hoặc Trưởng ban) mới sửa được nội dung.</div>
+
+            <p class="font-semibold text-[#1C1C1E]">Trợ lý AI trên trang bài</p>
+            <p>Khung <b>AI Copilot Biên Tập</b> có các nút: <b>Dịch tiếng Việt</b>, <b>Tóm tắt 5W1H</b>, <b>Viết bài (tháp ngược)</b>, <b>Gợi ý 5 tít</b>, <b>Kịch bản Shorts 60s</b>, <b>Kịch bản YouTube 3-5 phút</b>. Kết quả hiện trong vài chục giây; bấm <b>Chép vào bản biên tập</b> để đưa vào ô nội dung. Nếu tin có ảnh/video, khung <b>AI Xem Ảnh &amp; Video</b> giúp mô tả ảnh, đọc chữ trong ảnh, tóm tắt hoặc chép lời video và tạo phụ đề.</p>
+            <p>Với tin từ báo điện tử, khung <b>Toàn Văn Bài Báo</b> hiển thị nội dung đầy đủ (thường có sau 1–2 phút); bấm <b>Lấy toàn văn</b> hoặc <b>Lấy lại</b> nếu cần. Ở khung ảnh/video đính kèm, bấm <b>Tải từ nguồn về server</b> với tệp chưa được tải, hoặc <b>Tải về máy</b> để lưu tệp.</p>
+            <div class="rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm p-3">💡 AI chỉ tạo bản nháp. Hãy luôn đọc lại và kiểm chứng trước khi dùng. Nội dung báo khác thuộc bản quyền của họ: đăng lại phải xin phép và ghi nguồn.</div>
+        </div>
+    </section>
+
+    <!-- 6. Video -->
+    <section id="video" class="bg-white border border-[#ECECEE] rounded-2xl p-6 scroll-mt-6">
+        <h2 class="text-lg font-bold text-[#1C1C1E]">6. Kho video và Xưởng Video</h2>
+        <div class="mt-3 space-y-3 text-sm leading-relaxed text-[#3C3C43]">
+            <p class="font-semibold text-[#1C1C1E]">Kho video</p>
+            <ul class="list-disc pl-5 space-y-1.5">
+                <li>Thẻ <b>Video từ nguồn</b>: ảnh và video thu được từ các nguồn. Lọc theo nguồn, loại (ảnh/video) và trạng thái (đã có trên máy chủ hoặc chưa tải). Bấm <b>Tải về máy</b> để lưu tệp, <b>Tải từ nguồn về server</b> với tệp chưa tải, <b>Nguồn</b> để mở bài gốc.</li>
+                <li>Bấm <b>🎬 Tạo video</b> để iNew dựng một video dọc 9:16 từ tin đó. Việc này mất vài phút; video xong sẽ nằm ở thẻ <b>Video đã tạo</b>.</li>
+                <li>Thẻ <b>Video đã tạo</b>: các video do iNew dựng (ghi rõ Tự động hay Thủ công). Bấm <b>Tải về</b>, <b>✂️ Sửa</b> để mở trong Xưởng Video, hoặc <b>Duyệt ›</b> để mở trang bài.</li>
+            </ul>
+
+            <p class="font-semibold text-[#1C1C1E]">Tạo video nhanh từ trang bài</p>
+            <p>Trên trang chi tiết bài, khung <b>Phòng Dựng Video &amp; Xuất Bản Đa Nền Tảng</b> có:</p>
+            <ul class="list-disc pl-5 space-y-1.5">
+                <li><b>🚀 1-CLICK TẠO VIDEO</b>: tự tải ảnh/video gốc, nhờ AI viết kịch bản, lồng tiếng và dựng video 9:16. Video được lưu vào Kho video, không tự đăng.</li>
+                <li><b>⬇️ Tải Media Gốc Về Máy</b>, <b>⚡ 1-Click Remix Nhanh</b> và <b>🎛️ Xưởng Dựng Video (Studio)</b> nếu bạn muốn làm từng bước.</li>
+                <li>Kèm theo video là gói dựng cho CapCut: tệp phụ đề .srt, âm thanh giọng đọc và kịch bản.</li>
+            </ul>
+
+            <p class="font-semibold text-[#1C1C1E]">Xưởng Video</p>
+            <p>Xưởng Video (iNew Video Studio) là nơi sửa video của một bài theo kiểu CapCut: mọi chữ, khối màu và ảnh là một <b>lớp</b> kéo thả được trên khung hình. Nên mở từ trang bài (nút <b>Xưởng Dựng Video</b>) hoặc từ nút <b>✂️ Sửa</b> trong Kho video. Nếu mở thẳng từ thanh bên, Xưởng sẽ lấy tin mới nhất trong hệ thống.</p>
+            <ol class="list-decimal pl-5 space-y-1.5">
+                <li><b>🖼️ Khung</b>: chọn khổ 9:16, 16:9, 1:1 hoặc 4:5. Chọn hình nền (video, ảnh của bài, một ảnh tự chọn, hoặc màu trơn) và cách đặt (nền mờ, lấp đầy, viền màu). Phóng to hình nền bằng thanh trượt; bật <b>✋ Kéo hình nền</b> để dời. Cắt đoạn video nền bằng ô <b>Từ giây / Đến giây</b>.</li>
+                <li><b>🔤 Chữ &amp; khối</b>: bấm một kiểu chữ (tiêu đề lớn, phụ đề có nền, nhãn nổi bật, dải tít dưới...) hoặc một khối màu để thêm vào khung, rồi kéo đến chỗ cần đặt. Bấm vào lớp để sửa ở cột <b>Thuộc tính</b> bên phải: nội dung, phông chữ (có dấu tiếng Việt), cỡ chữ, màu, viền chữ, đổ bóng, nền sau chữ, độ trong suốt. Bấm đúp vào chữ trên khung để sửa ngay tại chỗ.</li>
+                <li><b>🏞️ Ảnh · AI</b>: bấm ảnh của bài hoặc ảnh tải lên để đặt lên khung (bo góc, viền ở cột Thuộc tính); nút <b>Nền</b> trên ảnh để dùng làm hình nền. <b>🎨 Tạo ảnh bằng AI</b>: gõ mô tả (hoặc bấm <b>✨ AI gợi ý mô tả từ bài</b>) rồi bấm <b>Tạo ảnh</b>. Tạo ảnh cần key Gemini hoặc OpenAI đã bật thanh toán (khoảng 900 đồng một ảnh); ảnh AI được gắn nhãn "Ảnh minh hoạ AI".</li>
+                <li><b>⏱️ Dòng thời gian</b> (dưới khung): mỗi lớp là một thanh màu. Kéo thanh để đổi lúc hiện, kéo hai đầu thanh để đổi độ dài; hoặc nhập giây ở mục <b>Thời gian hiện</b>.</li>
+                <li><b>🧩 Mẫu</b>: áp một bố cục có sẵn (Đỏ, Xanh, Vàng, Đen, Gọn), hoặc bấm <b>Lưu thành mẫu</b> để cả tòa soạn dùng lại bố cục vừa làm cho bài khác. Tít, nguồn tin và tiêu đề tự đổi theo bài.</li>
+                <li><b>🎙️ Lời bình</b>: chọn <b>🌐 Ngôn ngữ video</b>, bấm <b>✨ AI viết lời</b> để AI viết tiêu đề và lời bình; chọn giọng, tốc độ đọc, âm lượng giọng và tiếng gốc (0% để tắt). Bấm <b>🎧 Tạo giọng đọc để nghe thử</b> rồi <b>▶ Phát</b> để xem cả hình và tiếng.</li>
+                <li><b>🧑‍💼 MC ảo</b> (không bắt buộc): chọn MC, bấm <b>Tạo cử động khẩu hình MC</b>, sau khi xuất video thì bấm <b>Lồng MC vào video vừa xuất</b>.</li>
+                <li>Bấm <b>🎬 Xuất video</b>. Video xuất ra giống hệt khung xem trước. Lần sau mở lại bài, Xưởng giữ nguyên bản đang sửa (bấm <b>💾 Lưu nháp</b> để lưu giữa chừng).</li>
+            </ol>
+            <p class="text-sm text-[#8A8A8E]">Phím tắt: Space phát hoặc dừng, Delete xoá lớp, Ctrl+Z hoàn tác, Ctrl+Y làm lại, Ctrl+D nhân bản, phím mũi tên dịch lớp (giữ Shift để dịch xa hơn).</p>
+
+            <p class="font-semibold text-[#1C1C1E]">Video cho người xem nước ngoài</p>
+            <p>iNew làm được video bằng tiếng Việt, Anh, Hàn, Nhật, Trung, Thái và Indonesia. Chọn ngôn ngữ ở ô cạnh nút <b>1-CLICK TẠO VIDEO</b> trên trang bài, hoặc ở mục <b>Ngôn ngữ video</b> trong Xưởng Video. iNew sẽ:</p>
+            <ul class="list-disc pl-5 space-y-1">
+                <li>nhờ AI viết tít, lời bình và hashtag bằng thứ tiếng đó từ nội dung tin (tin tiếng Việt vẫn dùng được);</li>
+                <li>chọn giọng đọc Edge của thứ tiếng đó (mỗi thứ tiếng có giọng nam và nữ, cần Internet);</li>
+                <li>đổi chữ cố định trên khung hình (ví dụ "BẢN TIN NÓNG" thành "BREAKING NEWS", "속보", "ข่าวด่วน") và dùng font hiển thị đúng chữ Hàn, Nhật, Trung, Thái.</li>
+            </ul>
+            <p>Video tiếng nước ngoài bắt buộc phải có AI: nếu chưa có key AI hoặc đã hết lượt trong ngày, iNew báo lỗi thay vì để giọng nước ngoài đọc chữ tiếng Việt. Giọng VieNeu và giọng nhân bản chỉ đọc tiếng Việt. Ngôn ngữ mặc định của video là ngôn ngữ của giọng mặc định ở trang <b>Giọng đọc</b>.</p>
+            <div class="rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm p-3">💡 Hãy nhờ người biết thứ tiếng đó xem lại lời bình trước khi đăng: AI dịch tốt nhưng vẫn có thể sai tên riêng hoặc sắc thái.</div>
+
+            <p class="font-semibold text-[#1C1C1E]">Đăng video lên kênh</p>
+            <p>Ở bước 3 của khung dựng video trên trang bài, đánh dấu các kênh muốn đăng rồi bấm <b>🚀 Đăng Video Lên Các Kênh Đã Chọn Ngay</b>. Nút này chỉ mở khi bài đã ở trạng thái <b>Đã duyệt</b> hoặc <b>Hoàn thành</b>. Danh sách kênh (Telegram, YouTube, Facebook) do Quản trị viên khai báo ở mục <a href="#ai" class="underline hover:text-blue-600">Đấu nối AI</a>.</p>
+            <div class="rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm p-3">💡 Dựng video dùng nhiều sức máy. Trên máy yếu, mỗi video có thể mất vài phút; hãy để iNew làm xong rồi mới dựng tiếp.</div>
+        </div>
+    </section>
+
+    <!-- 7. Giọng đọc -->
+    <section id="giong-doc" class="bg-white border border-[#ECECEE] rounded-2xl p-6 scroll-mt-6">
+        <h2 class="text-lg font-bold text-[#1C1C1E]">7. Giọng đọc</h2>
+        <div class="mt-3 space-y-3 text-sm leading-relaxed text-[#3C3C43]">
+            <p>Phòng Giọng Đọc chuyển văn bản thành giọng đọc tiếng Việt, hoặc nhân bản giọng của một phát thanh viên từ đoạn ghi âm ngắn. Tệp tạo ra là bản nháp: bạn tải MP3 về hoặc dùng làm lời bình cho video.</p>
+            <p class="font-semibold text-[#1C1C1E]">Hai loại giọng</p>
+            <ul class="list-disc pl-5 space-y-1.5">
+                <li><b>Edge</b>: giọng có sẵn, dùng được ngay nhưng <b>cần Internet</b>.</li>
+                <li><b>VieNeu</b>: chạy ngay trên máy, <b>không cần Internet</b>, và là nền tảng cho tính năng nhân bản giọng.</li>
+            </ul>
+            <p class="font-semibold text-[#1C1C1E]">Tải giọng VieNeu lần đầu</p>
+            <ol class="list-decimal pl-5 space-y-1.5">
+                <li>Mở <b>Giọng đọc</b>. Khung trạng thái phía trên báo máy chưa có mô hình giọng VieNeu.</li>
+                <li>Bấm <b>⬇ Tải về (~610 MB)</b>. Thanh tiến trình cho biết đã tải được bao nhiêu. Trong lúc chờ, bạn vẫn dùng được giọng Edge.</li>
+                <li>Tải xong, giọng VieNeu và nhân bản giọng dùng được trên máy này. Việc tải chỉ làm một lần.</li>
+            </ol>
+            <p>Nếu mạng bị ngắt giữa chừng, bấm <b>Thử tải lại</b>; phần đã tải được giữ lại.</p>
+
+            <p class="font-semibold text-[#1C1C1E]">Tạo giọng đọc</p>
+            <ol class="list-decimal pl-5 space-y-1.5">
+                <li>Ở thẻ <b>Tạo giọng đọc</b>, dán nội dung vào ô <b>Văn bản cần đọc</b>. Nếu bạn mở từ nút <b>Tạo giọng đọc cho tin</b> trên trang bài, văn bản đã được điền sẵn.</li>
+                <li>Chọn <b>Giọng đọc</b>, chỉnh <b>Tốc độ</b> và (với giọng VieNeu) <b>Độ biểu cảm</b>.</li>
+                <li>Bấm <b>🔊 Tạo giọng đọc</b>. Kết quả hiện bên dưới và được lưu ở khung <b>Lịch sử</b>.</li>
+            </ol>
+
+            <p class="font-semibold text-[#1C1C1E]">Nhân bản giọng</p>
+            <ol class="list-decimal pl-5 space-y-1.5">
+                <li>Mở thẻ <b>Nhân bản giọng</b>. Bấm <b>⏺ Ghi âm</b> và đọc đoạn mẫu, hoặc <b>Tải tệp lên</b>. Mẫu tốt nhất dài 6–10 giây, thu ở phòng yên tĩnh, không nhạc nền.</li>
+                <li>Điền <b>Tên giọng</b>, <b>Người có giọng này</b>, giới tính và mô tả.</li>
+                <li>Ghi rõ người nói đồng ý như thế nào và đánh dấu ô xác nhận đồng ý.</li>
+                <li>Bấm <b>🧬 Tạo giọng nhân bản</b>. Giọng mới xuất hiện trong <b>Kho giọng nhân bản</b>, có nút <b>Dùng giọng này</b> và <b>Thử giọng</b>.</li>
+            </ol>
+            <p>Giọng nhân bản mặc định chỉ người tạo dùng được. Trưởng ban và Quản trị viên có thể bấm <b>Chia sẻ cả tòa soạn</b> để mọi biên tập viên cùng dùng.</p>
+            <div class="rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm p-3"><b>Lưu ý:</b> chỉ nhân bản giọng khi người nói biết và đồng ý. Không dùng giọng nhân bản để mạo danh hay nói điều họ không nói. Khi phát sóng, nên ghi rõ đây là giọng đọc AI.</div>
+
+            <p class="font-semibold text-[#1C1C1E]">Giọng lời bình mặc định cho video</p>
+            <p>Quản trị viên chọn giọng ở khung <b>Giọng lời bình cho video</b> rồi bấm <b>Lưu giọng mặc định</b>. Giọng này được dùng khi iNew dựng video, cả khi bấm tay lẫn khi tự động. Muốn chọn giọng nhân bản, giọng đó phải được chia sẻ cho cả tòa soạn.</p>
+            <div class="rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm p-3">💡 Mỗi câu nên dưới 30 chữ, câu dài thì ngắt bằng dấu phẩy. Tên nước ngoài nên viết theo cách đọc.</div>
+        </div>
+    </section>
+
+    <!-- 8. Telegram -->
+    <section id="telegram" class="bg-white border border-[#ECECEE] rounded-2xl p-6 scroll-mt-6">
+        <h2 class="text-lg font-bold text-[#1C1C1E]">8. Telegram, Chủ đề &amp; Bot</h2>
+        <div class="mt-3 space-y-3 text-sm leading-relaxed text-[#3C3C43]">
+            <p class="font-semibold text-[#1C1C1E]">Kết nối Telegram để thu tin (Quản trị viên)</p>
+            <p>Khi chưa đăng nhập Telegram, iNew đọc trang xem trước của các kênh công khai khoảng 3 phút một lần. Đăng nhập một tài khoản Telegram giúp nhận tin tức thời, theo dõi được kênh riêng tư và tải video lớn.</p>
+            <ol class="list-decimal pl-5 space-y-1.5">
+                <li>Mở <b>Telegram</b>. Ở khung <b>Cấu hình kết nối</b>, nhập <b>api_id</b> và <b>api_hash</b> (lấy ở my.telegram.org), bấm <b>Lưu API Telegram</b>.</li>
+                <li>Nhập số điện thoại, bấm <b>1. Gửi mã</b>.</li>
+                <li>Nhập mã nhận trong ứng dụng Telegram (và mật khẩu 2 bước nếu có), bấm <b>2. Đăng nhập</b>.</li>
+                <li>Khi trạng thái là <b>Đang chạy</b>, iNew tự tham gia các kênh trong mục Nguồn tin (10 phút một lần). Bấm <b>Đồng bộ kênh ngay</b> nếu không muốn chờ.</li>
+            </ol>
+            <div class="rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm p-3">💡 Nên dùng một số điện thoại và tài khoản Telegram riêng cho tòa soạn, không dùng tài khoản cá nhân. Mỗi tài khoản tham gia được khoảng 500 kênh. Mục <b>Kênh đang lỗi kết nối</b> liệt kê kênh sai tên, đã bị xoá hoặc link mời hết hạn.</div>
+
+            <p class="font-semibold text-[#1C1C1E]">Bot cảnh báo nhóm biên tập</p>
+            <ol class="list-decimal pl-5 space-y-1.5">
+                <li>Trong Telegram, nhắn lệnh <b>/newbot</b> cho @BotFather để tạo bot và nhận token.</li>
+                <li>Ở mục Telegram, dán token vào ô <b>Token bot mới</b>, bấm <b>Lưu &amp; khởi động lại bot</b>.</li>
+                <li>Thêm bot vào nhóm chat Telegram của từng ban.</li>
+            </ol>
+
+            <p class="font-semibold text-[#1C1C1E]">Chủ đề &amp; Bot</p>
+            <ul class="list-disc pl-5 space-y-1.5">
+                <li><b>Thêm Chủ Đề Mới</b>: đặt tên, mã nhận diện và mô tả, rồi bấm <b>Tạo Chủ Đề</b>. Chủ đề dùng để phân loại nguồn và lọc tin.</li>
+                <li>Khi bot vừa được thêm vào một nhóm, nhóm đó hiện ở khung <b>Nhóm bot vừa được thêm vào</b>. Chọn chủ đề rồi bấm <b>Kết nối</b>. Bạn cũng có thể nhập tay <b>Telegram Chat ID</b> và bấm <b>Kết Nối Nhóm Cảnh Báo</b>.</li>
+                <li>Từ đó, tin mới thuộc chủ đề sẽ được bot gửi vào nhóm, kèm các nút <b>📌 Nhận xử lý</b>, <b>🔍 Cần xác minh</b>, <b>⏭ Bỏ qua</b>. Bấm <b>Gửi thử</b> để kiểm tra nhóm, <b>Tắt</b> hoặc <b>Xóa</b> khi không dùng nữa.</li>
+            </ul>
+
+            <p class="font-semibold text-[#1C1C1E]">Liên kết tài khoản Telegram của bạn</p>
+            <p>Để bấm được nút trong nhóm Telegram và nhận thông báo riêng khi được giao bài hoặc bị trả bài, mỗi nhân viên cần liên kết Telegram một lần:</p>
+            <ol class="list-decimal pl-5 space-y-1.5">
+                <li>Mở <b>Tài khoản</b>, bấm <b>Tạo link liên kết Telegram</b>.</li>
+                <li>Bấm <b>📲 Mở Telegram để liên kết</b> (hoặc mở link trên điện thoại). Telegram mở bot iNew, bạn bấm <b>Start / Bắt đầu</b>.</li>
+                <li>Link chỉ dùng một lần và có hạn sử dụng. Hết hạn thì tạo link mới.</li>
+            </ol>
+        </div>
+    </section>
+
+    <!-- 9. AI -->
+    <section id="ai" class="bg-white border border-[#ECECEE] rounded-2xl p-6 scroll-mt-6">
+        <h2 class="text-lg font-bold text-[#1C1C1E]">9. Đấu nối AI</h2>
+        <div class="mt-3 space-y-3 text-sm leading-relaxed text-[#3C3C43]">
+            <p>Các nút AI trong iNew cần ít nhất một tài khoản AI. Quản trị viên khai báo ở mục <b>Đấu nối AI</b>. iNew làm việc được với nhiều hãng: Google Gemini, OpenAI, Claude, DeepSeek, Grok, Qwen, Mistral, OpenRouter và các hãng khác cùng chuẩn.</p>
+            <p class="font-semibold text-[#1C1C1E]">Thêm tài khoản AI</p>
+            <ol class="list-decimal pl-5 space-y-1.5">
+                <li>Bấm <b>➕ Thêm Tài Khoản Mới</b>.</li>
+                <li>Chọn <b>Hãng AI</b>, đặt <b>Tên Gợi Nhớ</b>, dán <b>API Key</b> (có liên kết <b>lấy key ở đâu?</b> cho từng hãng).</li>
+                <li>Chọn <b>Phiên Bản Mô Hình AI</b>. Bấm <b>Lấy danh sách</b> để xem các mô hình mà key này dùng được.</li>
+                <li>Bấm <b>⚡ Kiểm Tra Ngay</b> để chắc chắn key hoạt động, rồi lưu tài khoản.</li>
+            </ol>
+            <ul class="list-disc pl-5 space-y-1.5">
+                <li>Bảng <b>Phân việc cho AI</b> cho phép chọn AI chính và AI dự phòng cho từng việc. Để <b>Tự động</b> thì iNew tự chọn. Đọc video hiện chỉ Google Gemini làm được. Việc <b>Tạo ảnh minh hoạ</b> (ở Xưởng Video) cần key Gemini hoặc OpenAI đã bật thanh toán: gói miễn phí của các hãng không tạo được ảnh.</li>
+                <li>Mỗi tài khoản có nút <b>Thử Kết Nối</b>, nút tạm dừng và nút xoá.</li>
+                <li>Khung <b>Lượt dùng AI hôm nay</b> cho biết mỗi người đã dùng bao nhiêu lượt. iNew giới hạn số lượt mỗi ngày cho từng người và cho cả tòa soạn.</li>
+            </ul>
+            <p class="font-semibold text-[#1C1C1E]">Tự động tạo video nháp</p>
+            <p>Ở khung <b>Tự Động Tạo Video Từ Tin Thu Thập</b>, bật <b>Bật tự động tạo video nháp</b>, chọn có <b>Chỉ tạo cho tin có ảnh/video gốc</b> hay không và đặt <b>Tối đa mỗi giờ</b>, rồi bấm <b>Lưu cài đặt</b>. Video chỉ được lưu vào Kho video làm bản nháp; iNew không bao giờ tự đăng.</p>
+            <p class="font-semibold text-[#1C1C1E]">Kênh xuất bản</p>
+            <p>Ở khung <b>Đấu Nối Kênh Xuất Bản Ngoại Vi</b>, thêm kênh Telegram, kênh YouTube Shorts hoặc Trang Facebook để đăng video từ trang bài. Với kênh Telegram, bot phải được thêm làm quản trị viên của kênh và có quyền đăng bài.</p>
+            <div class="rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm p-3">💡 Google AI Studio (aistudio.google.com) cấp key Gemini miễn phí. Bạn có thể dùng vài tài khoản Google cho các việc khác nhau để không bị hết lượt.</div>
+        </div>
+    </section>
+
+    <!-- 10. Nhân viên -->
+    <section id="nhan-vien" class="bg-white border border-[#ECECEE] rounded-2xl p-6 scroll-mt-6">
+        <h2 class="text-lg font-bold text-[#1C1C1E]">10. Nhân viên và phân quyền</h2>
+        <div class="mt-3 space-y-3 text-sm leading-relaxed text-[#3C3C43]">
+            <p>Quản trị viên tạo tài khoản cho từng người ở mục <b>Nhân viên</b>: nhập Tên đăng nhập, Mật khẩu (ít nhất 8 ký tự), Họ và tên, chọn <b>Vai trò phân quyền</b>, rồi bấm <b>Tạo Tài Khoản</b>.</p>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm border border-[#ECECEE] rounded-xl">
+                    <thead class="bg-[#F2F2F7] text-[#1C1C1E]">
+                        <tr><th class="p-2.5 font-semibold">Vai trò</th><th class="p-2.5 font-semibold">Được làm gì</th></tr>
+                    </thead>
+                    <tbody class="text-[#3C3C43]">
+                        <tr class="border-t border-[#ECECEE]"><td class="p-2.5 font-semibold">Quản Trị Viên</td><td class="p-2.5">Toàn quyền: nguồn tin, Telegram, AI, nhân viên, bản quyền, cài đặt hệ thống; duyệt bài, giao việc, khôi phục bài đã lưu trữ.</td></tr>
+                        <tr class="border-t border-[#ECECEE]"><td class="p-2.5 font-semibold">Trưởng Ban</td><td class="p-2.5">Nhận và biên tập bài, duyệt bài, trả bài về sửa, giao việc, mở lại tin, xem Nhật ký, chia sẻ giọng nhân bản.</td></tr>
+                        <tr class="border-t border-[#ECECEE]"><td class="p-2.5 font-semibold">Biên Tập Viên</td><td class="p-2.5">Nhận bài, viết tin, dùng AI, dựng video, tạo giọng đọc, gửi duyệt.</td></tr>
+                        <tr class="border-t border-[#ECECEE]"><td class="p-2.5 font-semibold">Nhân Viên Theo Dõi</td><td class="p-2.5">Lọc tin và bấm Bỏ qua với tin không có giá trị. Không nhận bài.</td></tr>
+                        <tr class="border-t border-[#ECECEE]"><td class="p-2.5 font-semibold">Người Xem</td><td class="p-2.5">Chỉ xem tin, không thao tác.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <ul class="list-disc pl-5 space-y-1.5">
+                <li>Bấm <b>Khóa tài khoản</b> khi một người nghỉ việc; bấm <b>Mở khóa</b> để dùng lại.</li>
+                <li>Khi nhân viên quên mật khẩu, Quản trị viên nhập mật khẩu mới ở cột Thao tác và bấm <b>Đặt lại</b>.</li>
+                <li>Mỗi người tự đổi mật khẩu ở mục <b>Tài khoản</b>: nhập mật khẩu hiện tại, mật khẩu mới (ít nhất 8 ký tự) hai lần, rồi bấm <b>Lưu mật khẩu mới</b>.</li>
+                <li><b>Nhật ký</b> (Trưởng ban và Quản trị viên) ghi lại ai đã làm gì, với bài nào, lúc nào. Nhật ký không sửa hay xoá được. Bạn có thể lọc theo nhân viên, thao tác, mã bài và khoảng thời gian.</li>
+                <li><b>Hiệu năng</b> (Quản trị viên) cho biết số kênh đang theo dõi, độ trễ nhận tin, số tin bị sót đã được lấy bù, mức dùng máy và dung lượng tăng mỗi ngày. Bấm <b>Kiểm tra bỏ sót ngay</b> để kiểm tra tức thì.</li>
+            </ul>
+            <p>Ở mục <b>Tài khoản</b> còn có khung <b>Mời tác giả một ly cà phê</b>. Việc ủng hộ hoàn toàn tự nguyện và không ảnh hưởng đến quyền sử dụng iNew.</p>
+        </div>
+    </section>
+
+    <!-- 11. Dữ liệu -->
+    <section id="du-lieu" class="bg-white border border-[#ECECEE] rounded-2xl p-6 scroll-mt-6">
+        <h2 class="text-lg font-bold text-[#1C1C1E]">11. Thư mục dữ liệu và sao lưu</h2>
+        <div class="mt-3 space-y-3 text-sm leading-relaxed text-[#3C3C43]">
+            <p>Toàn bộ tin bài, ảnh, video, giọng đọc, tài khoản và mã bản quyền nằm trong một thư mục dữ liệu:</p>
+            <ul class="list-disc pl-5 space-y-1.5">
+                <li><b>Windows</b>: <b>D:\iNew_Data</b> nếu máy có ổ D, nếu không thì <b>C:\ProgramData\iNew</b>.</li>
+                <li><b>macOS</b>: thư mục <b>iNew_Data</b> trong thư mục người dùng của bạn (~/iNew_Data).</li>
+            </ul>
+            <p class="font-semibold text-[#1C1C1E]">Sao lưu tự động</p>
+            <p>iNew tự sao lưu cơ sở dữ liệu (tin bài, tài khoản, cài đặt) mỗi ngày một lần vào thư mục <b>backups</b> bên trong thư mục dữ liệu. Các bản sao lưu cũ hơn 14 ngày được tự xoá. Dòng <b>Sao lưu gần nhất</b> trên màn hình Tổng quan cho biết bản gần nhất được tạo cách đây bao lâu.</p>
+            <div class="rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm p-3"><b>Lưu ý:</b> bản sao lưu tự động nằm trên cùng ổ đĩa với dữ liệu, và không gồm ảnh/video. Nếu ổ đĩa hỏng, bạn sẽ mất cả hai. Hãy định kỳ (ví dụ mỗi tuần) chép cả thư mục dữ liệu sang ổ cứng ngoài hoặc máy khác. Nên chọn <b>Thoát iNew</b> trước khi chép để dữ liệu không bị thay đổi giữa chừng.</div>
+            <p>Khi cần khôi phục từ một bản sao lưu, hãy liên hệ tác giả qua mục <a href="#lien-he" class="underline hover:text-blue-600">Hỗ trợ</a> để được hướng dẫn.</p>
+            <div class="rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm p-3">💡 Ảnh và video cũ hơn 30 ngày của các bài không còn ai làm sẽ được tự dọn để tiết kiệm ổ đĩa. Thông tin bài vẫn được giữ, có thể tải lại tệp từ nguồn khi cần.</div>
+        </div>
+    </section>
+
+    <!-- 12. Mạng nội bộ -->
+    <section id="mang-noi-bo" class="bg-white border border-[#ECECEE] rounded-2xl p-6 scroll-mt-6">
+        <h2 class="text-lg font-bold text-[#1C1C1E]">12. Dùng chung trong mạng nội bộ</h2>
+        <div class="mt-3 space-y-3 text-sm leading-relaxed text-[#3C3C43]">
+            <p>Mặc định, chỉ máy cài iNew mở được iNew. Muốn đồng nghiệp cùng làm việc từ máy của họ:</p>
+            <ol class="list-decimal pl-5 space-y-1.5">
+                <li>Quản trị viên mở <b>Cài đặt hệ thống</b>.</li>
+                <li>Bật công tắc <b>Cho phép máy khác trong mạng nội bộ truy cập</b>.</li>
+                <li>Bấm nút khởi động lại để thay đổi có hiệu lực.</li>
+                <li>Trang cài đặt hiện địa chỉ để chia sẻ, ví dụ <b>http://192.168.1.10:8000</b>. Đồng nghiệp dùng chung mạng Wi-Fi hoặc mạng dây với máy cài iNew mở địa chỉ này trên trình duyệt và đăng nhập bằng tài khoản của mình.</li>
+            </ol>
+            <div class="rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm p-3"><b>Lưu ý:</b> máy cài iNew phải luôn bật và iNew phải đang chạy thì người khác mới vào được. Chỉ bật tính năng này ở mạng tin cậy của tòa soạn, và yêu cầu mọi người đặt mật khẩu mạnh.</div>
+        </div>
+    </section>
+
+    <!-- 13. Cập nhật -->
+    <section id="cap-nhat" class="bg-white border border-[#ECECEE] rounded-2xl p-6 scroll-mt-6">
+        <h2 class="text-lg font-bold text-[#1C1C1E]">13. Cập nhật phiên bản mới</h2>
+        <div class="mt-3 space-y-3 text-sm leading-relaxed text-[#3C3C43]">
+            <ol class="list-decimal pl-5 space-y-1.5">
+                <li>Khi có phiên bản mới, Quản trị viên thấy một thông báo ở đầu trang kèm đường dẫn tải về. Bạn cũng có thể tự kiểm tra ở <b>Cài đặt hệ thống</b>, khung <b>Phiên bản &amp; cập nhật</b>, nút <b>Kiểm tra cập nhật</b>.</li>
+                <li>Tải bộ cài mới về.</li>
+                <li>Chọn <b>Thoát iNew</b> ở biểu tượng khay.</li>
+                <li>Chạy bộ cài mới, cài đè lên bản cũ. Dữ liệu của bạn được giữ nguyên.</li>
+                <li>Mở lại iNew như bình thường.</li>
+            </ol>
+            <div class="rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm p-3">💡 Trước khi cập nhật, nên chép một bản thư mục dữ liệu ra nơi khác cho chắc chắn.</div>
+        </div>
+    </section>
+
+    <!-- 14. Sự cố -->
+    <section id="loi" class="bg-white border border-[#ECECEE] rounded-2xl p-6 scroll-mt-6">
+        <h2 class="text-lg font-bold text-[#1C1C1E]">14. Sự cố thường gặp</h2>
+        <div class="mt-3 space-y-4 text-sm leading-relaxed text-[#3C3C43]">
+            <div>
+                <p class="font-semibold text-[#1C1C1E]">Trang iNew không mở được</p>
+                <ol class="list-decimal pl-5 space-y-1.5 mt-1">
+                    <li>Tìm biểu tượng iNew ở khay hệ thống (Windows) hoặc thanh menu (macOS). Nếu có, bấm <b>Mở iNew</b>.</li>
+                    <li>Nếu vẫn không được, bấm <b>Khởi động lại</b> rồi chờ khoảng nửa phút.</li>
+                    <li>Nếu không thấy biểu tượng, nghĩa là iNew đã tắt. Mở lại iNew từ biểu tượng trên màn hình hoặc menu Start / Launchpad.</li>
+                    <li>Với máy khác trong mạng nội bộ: kiểm tra máy cài iNew còn bật, cùng mạng, và tính năng truy cập mạng nội bộ đang bật.</li>
+                </ol>
+            </div>
+            <div>
+                <p class="font-semibold text-[#1C1C1E]">Quên mật khẩu</p>
+                <p class="mt-1">Nhân viên quên mật khẩu: nhờ Quản trị viên đặt lại ở mục <b>Nhân viên</b>. Quản trị viên quên mật khẩu: nhờ một Quản trị viên khác đặt lại. Nếu tòa soạn chỉ có một Quản trị viên, hãy liên hệ tác giả qua mục <a href="#lien-he" class="underline hover:text-blue-600">Hỗ trợ</a>. Vì vậy, nên luôn có ít nhất hai tài khoản Quản trị.</p>
+            </div>
+            <div>
+                <p class="font-semibold text-[#1C1C1E]">Windows hoặc macOS cảnh báo khi mở iNew lần đầu</p>
+                <ul class="list-disc pl-5 space-y-1.5 mt-1">
+                    <li><b>Windows</b>: nếu hiện khung xanh "Windows protected your PC", bấm <b>More info</b> rồi bấm <b>Run anyway</b>.</li>
+                    <li><b>macOS</b>: nếu máy báo không mở được iNew, bấm <b>Xong</b> (Done). Mở <b>Cài đặt hệ thống</b> → <b>Quyền riêng tư &amp; Bảo mật</b>, kéo xuống cuối trang, bấm <b>Vẫn mở</b> (Open Anyway) cạnh dòng nói về iNew, rồi xác nhận bằng mật khẩu máy. Chỉ cần làm một lần.</li>
+                </ul>
+            </div>
+            <div>
+                <p class="font-semibold text-[#1C1C1E]">Giọng VieNeu tạo chậm</p>
+                <p class="mt-1">Giọng VieNeu chạy ngay trên máy của bạn: thường mất 30–60 giây cho mỗi phút âm thanh, và lâu hơn trên máy yếu. Các lượt được xếp hàng làm lần lượt. Khi cần nhanh, hãy dùng giọng <b>Edge</b> (cần Internet).</p>
+            </div>
+            <div>
+                <p class="font-semibold text-[#1C1C1E]">Không có tin mới</p>
+                <p class="mt-1">Xem khung <b>Trạng thái hệ thống</b> ở Tổng quan. Kiểm tra nguồn đang <b>Bật</b> ở mục Nguồn tin, xem danh sách <b>Kênh đang lỗi kết nối</b> ở mục Telegram, và kiểm tra kết nối Internet.</p>
+            </div>
+            <div>
+                <p class="font-semibold text-[#1C1C1E]">Nút AI báo lỗi</p>
+                <p class="mt-1">Nhờ Quản trị viên mở <b>Đấu nối AI</b>, bấm <b>Thử Kết Nối</b> ở từng tài khoản. Key có thể đã hết hạn, hết lượt dùng hoặc bị tạm dừng. Cũng có thể bạn đã dùng hết số lượt AI trong ngày.</p>
+            </div>
+            <div>
+                <p class="font-semibold text-[#1C1C1E]">Trang báo phần mềm đang bị khoá</p>
+                <p class="mt-1">Máy chưa có mã bản quyền hợp lệ. Quản trị viên làm theo mục <a href="#kich-hoat" class="underline hover:text-blue-600">Kích hoạt bản quyền</a>.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 15. Liên hệ -->
+    <section id="lien-he" class="bg-white border border-[#ECECEE] rounded-2xl p-6 scroll-mt-6">
+        <h2 class="text-lg font-bold text-[#1C1C1E]">15. Hỗ trợ và liên hệ tác giả</h2>
+        <div class="mt-3 space-y-3 text-sm leading-relaxed text-[#3C3C43]">
+            <p>Khi gặp lỗi chưa tự xử lý được, hãy gửi thông tin cho tác giả qua mục <b>Hỗ trợ</b> ở cuối thanh bên:</p>
+            <ol class="list-decimal pl-5 space-y-1.5">
+                <li>Quản trị viên bấm <b>Tải nhật ký lỗi</b>. iNew tải về một tệp .zip chứa nhật ký hoạt động và thông tin máy. Tệp này <b>không</b> chứa mật khẩu hay khoá bí mật.</li>
+                <li>Bấm <b>Gửi lỗi cho tác giả</b>. Telegram mở bot của tác giả.</li>
+                <li>Gửi tệp .zip vừa tải cho bot, kèm vài dòng mô tả: bạn đang làm gì, lỗi hiện ra như thế nào, xảy ra từ lúc nào.</li>
+            </ol>
+            <div class="rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm p-3">Cảm ơn bạn đã dùng iNew. Mọi góp ý của bạn đều giúp iNew ngày càng tốt hơn cho những người làm tin.</div>
+            <p class="text-[#8A8A8E]">Tác giả đọc và phản hồi trong thời gian sớm nhất có thể. Mô tả càng rõ, lỗi càng được xử lý nhanh.</p>
+        </div>
+    </section>
+
+</div>
+{% endblock %}

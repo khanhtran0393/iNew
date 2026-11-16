@@ -1,0 +1,124 @@
+{% extends "layout.html" %}
+
+{% block title %}Quản Lý Nhân Viên — iNew{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-[#1C1C1E]">Quản Lý Nhân Viên & Phân Quyền</h1>
+            <p class="text-sm text-[#8A8A8E] mt-0.5">Tạo tài khoản tòa soạn, phân quyền vai trò và liên kết tài khoản Telegram</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Add Staff Form -->
+        <div class="glass-panel p-5 rounded-2xl h-fit">
+            <h2 class="text-base font-semibold text-[#1C1C1E] mb-3">Tạo Tài Khoản Nhân Viên Mới</h2>
+            <form action="/users/create" method="POST" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-[#3C3C43] mb-1">Tên đăng nhập</label>
+                    <input type="text" name="username" required placeholder="bientapvien1"
+                        class="w-full px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-xs text-[#1C1C1E] focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-[#3C3C43] mb-1">Mật khẩu</label>
+                    <input type="password" name="password" required minlength="8" placeholder="••••••••"
+                        class="w-full px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-xs text-[#1C1C1E] focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-[#3C3C43] mb-1">Họ và tên</label>
+                    <input type="text" name="full_name" required placeholder="Nguyễn Văn A"
+                        class="w-full px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-xs text-[#1C1C1E] focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-[#3C3C43] mb-1">Vai trò phân quyền</label>
+                    <select name="role_slug" required class="w-full px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-xs text-[#1C1C1E] focus:outline-none focus:border-blue-500">
+                        <option value="editor">Biên Tập Viên (Nhận bài, viết tin, gửi duyệt)</option>
+                        <option value="lead">Trưởng Ban (Duyệt bài, giao việc, xem nhật ký)</option>
+                        <option value="monitor">Nhân Viên Theo Dõi (Lọc tin, bấm Bỏ qua)</option>
+                        <option value="admin">Quản Trị Viên (Toàn quyền hệ thống)</option>
+                        <option value="viewer">Người Xem (Chỉ xem tin tức)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-[#3C3C43] mb-1">Telegram User ID (Tùy chọn)</label>
+                    <input type="text" name="telegram_user_id" placeholder="Ví dụ: 123456789"
+                        class="w-full px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-xs text-[#1C1C1E] focus:outline-none focus:border-blue-500 font-mono">
+                    <p class="text-[11px] text-[#AEAEB2] mt-1">Dùng để tự động nhận diện danh tính khi bấm nút trên Telegram Bot.</p>
+                </div>
+                <button type="submit" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-md shadow-blue-500/20 transition mt-2">
+                    Tạo Tài Khoản
+                </button>
+            </form>
+        </div>
+
+        <!-- Users Table -->
+        <div class="lg:col-span-2 glass-panel p-5 rounded-2xl">
+            <h2 class="text-base font-semibold text-[#1C1C1E] mb-3">Danh Sách Thành Viên ({{ users | length }})</h2>
+            <div class="overflow-x-auto custom-scroll">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b border-[#ECECEE] text-[#8A8A8E] uppercase tracking-wider text-[11px]">
+                            <th class="py-3 px-3">Họ Tên & Tên Đăng Nhập</th>
+                            <th class="py-3 px-3">Vai Trò</th>
+                            <th class="py-3 px-3">Telegram ID</th>
+                            <th class="py-3 px-3">Trạng Thái</th>
+                            <th class="py-3 px-3">Ngày Tạo</th>
+                            <th class="py-3 px-3">Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[#E5E5EA]/60">
+                        {% for u in users %}
+                        <tr class="hover:bg-white/70 transition">
+                            <td class="py-3 px-3">
+                                <div class="font-semibold text-[#1C1C1E]">{{ u.full_name }}</div>
+                                <div class="text-[11px] text-[#8A8A8E] font-mono">@{{ u.username }}</div>
+                            </td>
+                            <td class="py-3 px-3">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-semibold
+                                    {% if u.role.slug == 'admin' %}bg-rose-100 text-rose-700 border border-rose-200
+                                    {% elif u.role.slug == 'lead' %}bg-amber-50 text-amber-700 border border-amber-200
+                                    {% elif u.role.slug == 'editor' %}bg-blue-50 text-blue-700 border border-blue-200
+                                    {% elif u.role.slug == 'monitor' %}bg-teal-50 text-teal-700 border border-teal-200
+                                    {% else %}bg-[#EFEFF4] text-[#8A8A8E] border border-[#D9D9DE]{% endif %}">
+                                    {{ u.role.name }}
+                                </span>
+                            </td>
+                            <td class="py-3 px-3 font-mono text-[#8A8A8E]">
+                                {{ u.telegram_user_id or 'Chưa liên kết' }}
+                            </td>
+                            <td class="py-3 px-3">
+                                {% if u.is_active %}
+                                <span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px]">Hoạt động</span>
+                                {% else %}
+                                <span class="px-2 py-0.5 rounded bg-[#EFEFF4] text-[#8A8A8E] border border-[#D9D9DE] text-[10px]">Đã khóa</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 px-3 text-[#8A8A8E]">
+                                {{ u.created_at.strftime('%d/%m/%Y') }}
+                            </td>
+                            <td class="py-3 px-3 space-y-1.5">
+                                {% if u.id != current_user.id %}
+                                <form action="/users/{{ u.id }}/toggle" method="POST">
+                                    <button type="submit" class="text-[11px] px-2 py-1 rounded bg-[#EFEFF4] border border-[#D9D9DE] hover:bg-[#E5E5EA]">
+                                        {{ 'Khóa tài khoản' if u.is_active else 'Mở khóa' }}
+                                    </button>
+                                </form>
+                                {% endif %}
+                                <form action="/users/{{ u.id }}/reset-password" method="POST" class="flex gap-1">
+                                    <input type="password" name="new_password" required minlength="8" placeholder="Mật khẩu mới"
+                                        class="w-28 px-2 py-1 rounded bg-white border border-[#D9D9DE] text-[11px] text-[#1C1C1E]">
+                                    <button type="submit" class="text-[11px] px-2 py-1 rounded bg-blue-50 border border-blue-200 hover:bg-blue-800">Đặt lại</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
