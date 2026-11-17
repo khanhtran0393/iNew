@@ -3,6 +3,37 @@
 {% block title %}Biên Tập Bài #{{ post.id }} — iNew{% endblock %}
 
 {% block content %}
+{% set status_labels = status_labels if (status_labels is defined and status_labels) else {
+    'new': 'Tin Mới', 'claimed': 'Đã Nhận', 'verifying': 'Đang Xác Minh', 'editing': 'Đang Biên Tập',
+    'reviewing': 'Chờ Duyệt', 'pending_review': 'Chờ Duyệt', 'approved': 'Đã Duyệt', 'rejected': 'Bác Bỏ',
+    'skipped': 'Bỏ Qua', 'completed': 'Hoàn Thành', 'archived': 'Lưu Trữ', 'ready': 'Sẵn Sàng', 'duplicate': 'Trùng Lặp'
+} %}
+{% set can_approve = can_approve if can_approve is defined else True %}
+{% set can_assign = can_assign if can_assign is defined else True %}
+{% set can_claim = can_claim if can_claim is defined else True %}
+{% set can_edit = can_edit if can_edit is defined else True %}
+{% set can_publish = can_publish if can_publish is defined else True %}
+{% set can_skip = can_skip if can_skip is defined else True %}
+{% set can_work = can_work if can_work is defined else True %}
+{% set is_admin = is_admin if is_admin is defined else True %}
+{% set is_owner = is_owner if is_owner is defined else True %}
+{% set flash_msg = flash_msg if flash_msg is defined else None %}
+{% set flash_err = flash_err if flash_err is defined else None %}
+{% set last_feedback = last_feedback if last_feedback is defined else None %}
+{% set staff = staff if staff is defined else [] %}
+{% set publish_targets = publish_targets if publish_targets is defined else [] %}
+{% set latest_video = latest_video if latest_video is defined else None %}
+{% set latest_script = latest_script if latest_script is defined else None %}
+{% set media_ai_actions = media_ai_actions if (media_ai_actions is defined and media_ai_actions) else {
+    'image_describe': {'title': '🖼️ Mô tả & đọc chữ', 'label': '🖼️ Mô tả & đọc chữ', 'media': 'photo'},
+    'image_verify': {'title': '🔎 Gợi ý kiểm chứng ảnh', 'label': '🔎 Gợi ý kiểm chứng ảnh', 'media': 'photo'},
+    'video_summary': {'title': '🎞️ Tóm tắt theo mốc', 'label': '🎞️ Tóm tắt theo mốc', 'media': 'video'},
+    'video_transcript': {'title': '🗣️ Chép lời + dịch', 'label': '🗣️ Chép lời + dịch', 'media': 'video'},
+    'video_subtitles': {'title': '💬 Phụ đề tiếng Việt (SRT)', 'label': '💬 Phụ đề tiếng Việt (SRT)', 'media': 'video'},
+    'video_highlights': {'title': '✂️ Gợi ý đoạn cắt Shorts', 'label': '✂️ Gợi ý đoạn cắt Shorts', 'media': 'video'}
+} %}
+{% set ai_media = ai_media if ai_media is defined else (post.media_items if (post.media_items is defined and post.media_items) else []) %}
+{% macro fmt_dt(dt, fmt='%H:%M:%S %d/%m/%Y') %}{{ dt.strftime(fmt) if (dt and dt.strftime is defined) else (dt or '') }}{% endmacro %}
 <div class="space-y-6">
     <!-- Breadcrumb & Status Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -43,13 +74,13 @@
     {% if last_feedback and post.workflow_status in ['editing', 'rejected', 'skipped'] %}
     <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm">
         <b>{{ 'Nhận xét của người duyệt' if last_feedback.to_status == 'editing' else ('Lý do bác bỏ' if last_feedback.to_status == 'rejected' else 'Ghi chú bỏ qua') }}</b>
-        ({{ last_feedback.user.full_name if last_feedback.user else 'Hệ thống' }}, {{ last_feedback.created_at.strftime('%H:%M %d/%m') }}):
+        ({{ last_feedback.user.full_name if (last_feedback.user is defined and last_feedback.user) else 'Hệ thống' }}, {{ fmt_dt(last_feedback.created_at, '%H:%M %d/%m') }}):
         {{ last_feedback.notes }}
     </div>
     {% endif %}
     {% if post.published_url %}
     <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
-        🏁 Đã đăng lúc {{ post.published_at.strftime('%H:%M %d/%m/%Y') if post.published_at else '' }}:
+        🏁 Đã đăng lúc {{ fmt_dt(post.published_at, '%H:%M %d/%m/%Y') }}:
         <a href="{{ post.published_url if post.published_url.startswith('http') else '#' }}" target="_blank" rel="noopener" class="underline break-all">{{ post.published_url }}</a>
     </div>
     {% endif %}
@@ -58,7 +89,7 @@
     {% if post.is_source_deleted %}
     <div class="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center space-x-2">
         <svg class="w-5 h-5 flex-shrink-0 text-rose-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-        <span><b>Cảnh báo:</b> Bài viết này đã bị kênh nguồn xóa bỏ khỏi Telegram vào lúc {{ post.deleted_at.strftime('%H:%M %d/%m/%Y') if post.deleted_at else '' }}. Cần thận trọng khi kiểm chứng!</span>
+        <span><b>Cảnh báo:</b> Bài viết này đã bị kênh nguồn xóa bỏ khỏi Telegram vào lúc {{ fmt_dt(post.deleted_at, '%H:%M %d/%m/%Y') }}. Cần thận trọng khi kiểm chứng!</span>
     </div>
     {% endif %}
 
@@ -79,14 +110,14 @@
                 <div class="grid grid-cols-2 gap-3 text-xs">
                     <div>
                         <span class="text-[#8A8A8E]">Kênh:</span>
-                        <div class="font-medium text-[#1C1C1E] mt-0.5">{{ post.source.title if post.source else 'Không rõ' }}</div>
+                        <div class="font-medium text-[#1C1C1E] mt-0.5">{{ post.source.title if (post.source is defined and post.source) else (post.source_channel.title if (post.source_channel is defined and post.source_channel) else 'Không rõ') }}</div>
                     </div>
                     <div>
                         <span class="text-[#8A8A8E]">Thời gian thu thập:</span>
-                        <div class="font-medium text-[#1C1C1E] mt-0.5">{{ post.created_at.strftime('%H:%M:%S %d/%m/%Y') }}</div>
+                        <div class="font-medium text-[#1C1C1E] mt-0.5">{{ fmt_dt(post.created_at, '%H:%M:%S %d/%m/%Y') }}</div>
                     </div>
                     <div>
-                        <span class="text-[#8A8A8E]">{{ 'Link Telegram gốc:' if post.source and post.source.source_type == 'telegram' else 'Link bài gốc:' }}</span>
+                        <span class="text-[#8A8A8E]">{{ 'Link Telegram gốc:' if (post.source is defined and post.source and post.source.source_type == 'telegram') else 'Link bài gốc:' }}</span>
                         <div class="mt-0.5">
                             {% if post.source_url and post.source_url.startswith('http') %}
                             <a href="{{ post.source_url }}" target="_blank" rel="noopener" class="text-blue-700 hover:underline font-mono text-[11px] truncate block">
@@ -123,7 +154,7 @@
                 <article class="p-5 rounded-xl bg-white border border-[#ECECEE] text-[15px] text-[#1C1C1E] leading-7 space-y-3">
                     {% for para in post.article_text.split('\n') if para.strip() %}<p>{{ para }}</p>{% endfor %}
                 </article>
-                <p class="mt-2 text-[11px] text-[#AEAEB2]">Trích từ <a href="{{ post.source_url }}" target="_blank" rel="noopener" class="underline">trang gốc</a>{% if post.article_fetched_at %} lúc {{ post.article_fetched_at.strftime('%H:%M %d/%m') }} UTC{% endif %}. Nội dung thuộc bản quyền của báo; đăng lại phải xin phép và ghi nguồn.</p>
+                <p class="mt-2 text-[11px] text-[#AEAEB2]">Trích từ <a href="{{ post.source_url }}" target="_blank" rel="noopener" class="underline">trang gốc</a>{% if post.article_fetched_at %} lúc {{ fmt_dt(post.article_fetched_at, '%H:%M %d/%m') }} UTC{% endif %}. Nội dung thuộc bản quyền của báo; đăng lại phải xin phép và ghi nguồn.</p>
                 {% elif post.article_status == 'failed' %}
                 <p class="text-xs text-amber-700">Chưa trích được toàn văn (trang chặn truy cập, trang video hoặc cần đăng nhập). Bấm "Lấy toàn văn" để thử lại, hoặc mở <a href="{{ post.source_url }}" target="_blank" rel="noopener" class="underline">link gốc</a> để đọc.</p>
                 {% else %}
@@ -276,278 +307,342 @@
                 {% endif %}
             </div>
 
-            <!-- AI Copilot Panel (On-Demand Assistant) -->
-            <div class="glass-panel p-5 rounded-2xl border border-indigo-200 bg-gradient-to-b from-indigo-950/30 to-[#F2F2F7]">
-                <div class="flex items-center justify-between mb-2">
-                    <h2 class="text-base font-semibold text-indigo-700 flex items-center space-x-2">
-                        <span>✨ AI Copilot Biên Tập</span>
-                    </h2>
-                    <span class="text-[10px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-mono">
-                        Trợ lý (Không tự đăng)
+            <!-- 1. AI Copilot Panel (On-Demand Assistant) -->
+            <div class="glass-panel p-5 rounded-2xl border border-indigo-200 bg-gradient-to-b from-indigo-950/30 to-[#F2F2F7] space-y-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xl">✨</span>
+                        <h2 class="text-base font-bold text-indigo-700">1. AI Copilot Biên Tập</h2>
+                    </div>
+                    <span class="text-[10px] px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 font-mono font-semibold">
+                        On-Demand · Không Tự Đăng
                     </span>
                 </div>
-                <p class="text-xs text-[#8A8A8E] mb-4">
-                    AI chỉ tạo bản nháp từ đúng nội dung nguồn; luôn kiểm tra lại trước khi dùng.
+                <p class="text-xs text-[#8A8A8E] leading-relaxed">
+                    Trợ lý tư duy kết hợp chuẩn báo chí <b>5W1H + Tháp Ngược</b>, tự động tối ưu hóa kịch bản theo thời lượng và phong cách tiêu đề đã chọn.
                     <span id="ai-usage" class="text-indigo-700"></span>
                 </p>
 
                 {% if can_edit %}
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-                    {% for code, label in [('translate', '🌐 Dịch tiếng Việt'), ('summarize', '📑 Tóm tắt 5W1H'), ('rewrite', '✍️ Viết bài (tháp ngược)'), ('headlines', '🏷️ Gợi ý 5 tít'), ('script', '🎬 Kịch bản Shorts 60s'), ('script_long', '📺 Kịch bản YouTube 3-5 phút')] %}
-                    <button type="button" onclick="callAiApi('{{ code }}')" class="p-2 rounded-xl bg-indigo-50 hover:bg-indigo-800/40 text-indigo-700 border border-indigo-700/60 text-xs font-medium transition text-center">{{ label }}</button>
-                    {% endfor %}
+                <!-- 4 Config Dropdowns Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-white/80 border border-indigo-100 shadow-sm text-xs">
+                    <!-- Dropdown 1: Ngôn ngữ -->
+                    <div>
+                        <label class="block font-bold text-[#3C3C43] mb-1">🌐 1. Ngôn ngữ:</label>
+                        <select id="ai-lang" class="w-full px-2.5 py-1.5 rounded-lg bg-white border border-[#D9D9DE] text-xs font-semibold text-[#1C1C1E] focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                            <option value="vi" selected>🇻🇳 Tiếng Việt</option>
+                            <option value="en">🇬🇧 English</option>
+                            <option value="ko">🇰🇷 한국어 (Hàn)</option>
+                            <option value="ja">🇯🇵 日本語 (Nhật)</option>
+                            <option value="zh">🇨🇳 中文 (Trung)</option>
+                            <option value="th">🇹🇭 ไทย (Thái)</option>
+                            <option value="id">🇮🇩 Bahasa Indonesia</option>
+                        </select>
+                    </div>
+
+                    <!-- Dropdown 2: Độ dài kịch bản -->
+                    <div>
+                        <label class="block font-bold text-[#3C3C43] mb-1">⏱️ 2. Độ dài kịch bản:</label>
+                        <select id="ai-script-length" onchange="toggleCustomMinutes()" class="w-full px-2.5 py-1.5 rounded-lg bg-white border border-[#D9D9DE] text-xs font-semibold text-[#1C1C1E] focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                            <option value="shorts_60s" selected>🎬 Kịch bản Shorts 60s (~140 từ)</option>
+                            <option value="youtube_3_5m">📺 Kịch bản YouTube 3-5 phút (~650 từ)</option>
+                            <option value="podcast_10_15m">🎙️ Kịch bản podcast 10-15 phút (~1800 từ)</option>
+                            <option value="custom">⏱️ Kịch bản độ dài tùy chọn</option>
+                        </select>
+                        <div id="custom-minutes-wrap" style="display: none;" class="mt-2 p-2 rounded-lg bg-indigo-50/70 border border-indigo-100 space-y-1.5">
+                            <div class="flex items-center space-x-2">
+                                <label for="ai-custom-minutes" class="text-[11px] text-indigo-900 font-bold whitespace-nowrap">Nhập số phút:</label>
+                                <input type="number" id="ai-custom-minutes" value="3" min="0.5" max="60" step="0.5" oninput="updateScriptMinutesEstimate()"
+                                    class="w-20 px-2.5 py-1 rounded-md bg-white border border-indigo-300 text-xs text-center font-bold text-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-sm">
+                                <span class="text-[11px] text-[#3C3C43] font-medium">phút</span>
+                            </div>
+                            <div class="text-[11px] text-indigo-700 font-semibold flex items-center space-x-1">
+                                <span>⚡ Ước tính:</span>
+                                <span id="custom-words-preview" class="font-extrabold text-indigo-900">420</span>
+                                <span class="text-[10px] text-indigo-600 font-normal">(tốc độ chuẩn phát thanh ~140 từ/phút)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dropdown 3: 5 Tít -->
+                    <div>
+                        <label class="block font-bold text-[#3C3C43] mb-1">🏷️ 3. Phong cách 5 Tít:</label>
+                        <select id="ai-headline-style" class="w-full px-2.5 py-1.5 rounded-lg bg-white border border-[#D9D9DE] text-xs font-semibold text-[#1C1C1E] focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                            <option value="sensational" selected>💥 Tít giật gân thu hút</option>
+                            <option value="serious">📰 Tít thời sự nghiêm túc</option>
+                            <option value="curiosity">🔍 Tít kích thích tò mò</option>
+                            <option value="question">❓ Tít dạng câu hỏi</option>
+                            <option value="seo">🏷️ Tít chuẩn SEO</option>
+                        </select>
+                    </div>
+
+                    <!-- Dropdown 4: Tỉ lệ video -->
+                    <div>
+                        <label class="block font-bold text-[#3C3C43] mb-1">📐 4. Tỉ lệ khung hình video:</label>
+                        <select id="ai-aspect-ratio" class="w-full px-2.5 py-1.5 rounded-lg bg-white border border-[#D9D9DE] text-xs font-semibold text-[#1C1C1E] focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                            <option value="9:16" selected>📱 Khung dọc 9:16 (Shorts / TikTok / Reels)</option>
+                            <option value="16:9">🖥️ Khung ngang 16:9 (YouTube / Web / TV)</option>
+                            <option value="1:1">⏹️ Khung vuông 1:1 (Facebook / Instagram Feed)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Master Integrated Action Button -->
+                <button type="button" onclick="generateIntegratedAiScript()" id="btn-integrated-script"
+                    class="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 hover:from-indigo-500 hover:to-blue-500 text-white font-bold text-xs shadow-md shadow-indigo-500/20 transition flex items-center justify-center space-x-2 active:scale-98">
+                    <span>✨ TẠO KỊCH BẢN TÍCH HỢP (5W1H + THÁP NGƯỢC)</span>
+                </button>
+
+                <!-- Quick Individual Sub-Actions -->
+                <div class="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span class="text-[10px] text-[#8A8A8E] font-medium mr-1">Thao tác lẻ:</span>
+                    <button type="button" onclick="callAiApi('summarize')" class="px-2 py-1 rounded-lg bg-[#EFEFF4] hover:bg-[#E5E5EA] text-[#3C3C43] text-[11px] font-medium">📑 5W1H</button>
+                    <button type="button" onclick="callAiApi('rewrite')" class="px-2 py-1 rounded-lg bg-[#EFEFF4] hover:bg-[#E5E5EA] text-[#3C3C43] text-[11px] font-medium">✍️ Tháp ngược</button>
+                    <button type="button" onclick="callAiApi('headlines')" class="px-2 py-1 rounded-lg bg-[#EFEFF4] hover:bg-[#E5E5EA] text-[#3C3C43] text-[11px] font-medium">🏷️ 5 Tít</button>
+                    <button type="button" onclick="callAiApi('translate')" class="px-2 py-1 rounded-lg bg-[#EFEFF4] hover:bg-[#E5E5EA] text-[#3C3C43] text-[11px] font-medium">🌐 Dịch bài</button>
                 </div>
                 {% else %}
                 <p class="text-xs text-[#AEAEB2] mb-3">Vai trò của bạn không dùng được AI.</p>
                 {% endif %}
 
-                <div id="ai-loading" class="hidden text-center py-4 text-xs text-indigo-700 animate-pulse">
-                    Đang chờ AI xử lý (có thể mất 10-40 giây)...
+                <div id="ai-loading" class="hidden text-center py-4 text-xs text-indigo-700 animate-pulse font-medium">
+                    ⏳ Đang xử lý bóc tách 5W1H, cấu trúc Tháp ngược và sinh kịch bản (khoảng 10-25 giây)...
                 </div>
                 <div id="ai-result-box" class="hidden space-y-2">
                     <div class="flex items-center justify-between text-xs text-[#8A8A8E]">
-                        <span>Kết quả gợi ý từ AI:</span>
-                        <button type="button" onclick="copyAiToEditor()" class="text-indigo-700 hover:underline font-semibold">
-                            &darr; Chép vào bản biên tập
+                        <span class="font-bold text-indigo-700">Kịch bản & Tiêu đề đề xuất:</span>
+                        <button type="button" onclick="copyAiToEditor()" class="text-indigo-700 hover:underline font-semibold flex items-center space-x-1">
+                            <span>&darr; Chép vào bản biên tập</span>
                         </button>
                     </div>
-                    <textarea id="ai-result-text" rows="8" readonly
-                        class="w-full p-3 rounded-xl bg-[#F2F2F7] border border-indigo-200 text-xs text-[#1C1C1E] custom-scroll"></textarea>
+                    <textarea id="ai-result-text" rows="10" readonly
+                        class="w-full p-3 rounded-xl bg-white border border-indigo-200 text-xs text-[#1C1C1E] leading-relaxed custom-scroll font-sans"></textarea>
                 </div>
 
                 {% if can_edit %}
-                <details class="mt-3 text-xs" id="ai-history-box" ontoggle="if (this.open) loadAiHistory()">
+                <details class="text-xs" id="ai-history-box" ontoggle="if (this.open) loadAiHistory()">
                     <summary class="cursor-pointer text-[#8A8A8E] hover:text-[#1C1C1E]">🕘 Lịch sử AI của bài này</summary>
                     <div id="ai-history-list" class="mt-2 space-y-2 max-h-80 overflow-y-auto custom-scroll"></div>
                 </details>
                 {% endif %}
             </div>
 
-            <!-- Gemini image / video analysis -->
-            {% set ai_media = post.media_items | selectattr('media_type', 'in', ['photo', 'video']) | list %}
-            {% if ai_media %}
-            <div class="glass-panel p-5 rounded-2xl border border-cyan-200 bg-gradient-to-b from-cyan-950/20 to-[#F2F2F7]">
-                <div class="flex items-center justify-between mb-2">
-                    <h2 class="text-base font-semibold text-cyan-700">🖼️ AI Xem Ảnh & Video</h2>
-                    <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200 font-mono">AI · Bản nháp</span>
+            <!-- 2. AI Xem Ảnh & Video (Multimodal Computer Vision & Script Scenes) -->
+            <div class="glass-panel p-5 rounded-2xl border border-cyan-200 bg-gradient-to-b from-cyan-950/20 via-[#F2F2F7] to-[#F2F2F7] space-y-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xl">🖼️</span>
+                        <h2 class="text-base font-bold text-cyan-700">2. AI Xem Ảnh & Video</h2>
+                    </div>
+                    <span class="text-[10px] px-2.5 py-0.5 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200 font-mono font-semibold">
+                        Multimodal & Visual Studio
+                    </span>
                 </div>
-                <p class="text-xs text-[#8A8A8E] mb-3">AI xem trực tiếp ảnh/video của tin: mô tả, đọc chữ trong ảnh, gợi ý kiểm chứng, tóm tắt và chép lời video, làm phụ đề. Video có thể mất 1-3 phút.</p>
-                {% if can_edit %}
-                <div class="space-y-2">
-                    {% for m in ai_media %}
-                    {% set is_local = m.file_path and m.file_path != 'pending_download' and not m.file_path.startswith('http') %}
-                    <div class="p-2.5 rounded-xl bg-white/70 border border-[#ECECEE] flex flex-col sm:flex-row sm:items-center gap-2">
-                        <div class="flex items-center gap-2 sm:w-36 flex-shrink-0">
-                            {% if m.media_type == 'photo' and is_local %}
-                            <img src="/media/download?path={{ m.file_path | urlencode }}" alt="" loading="lazy" class="w-12 h-12 object-cover rounded-lg">
-                            {% elif m.media_type == 'photo' and m.file_path.startswith('http') %}
-                            <img src="{{ m.file_path }}" alt="" loading="lazy" referrerpolicy="no-referrer" class="w-12 h-12 object-cover rounded-lg">
-                            {% else %}
-                            <span class="w-12 h-12 rounded-lg bg-[#EFEFF4] flex items-center justify-center text-lg">{{ '🎞️' if m.media_type == 'video' else '🖼️' }}</span>
-                            {% endif %}
-                            <span class="text-xs text-[#3C3C43]">{{ 'Video' if m.media_type == 'video' else 'Ảnh' }} {{ loop.index }}</span>
-                        </div>
-                        {% if is_local or m.file_path.startswith('http') or m.remote_url %}
-                        <div class="flex flex-wrap gap-1.5">
-                            {% for code, spec in media_ai_actions.items() if spec.media == m.media_type %}
-                            <button type="button" onclick="startMediaAi({{ m.id }}, '{{ code }}', this)"
-                                class="px-2.5 py-1.5 rounded-lg bg-cyan-50 hover:bg-cyan-800/40 text-cyan-700 border border-cyan-200 text-[11px] font-medium transition">{{ spec.label }}</button>
+
+                <!-- Sub-Module 2A: Thu gọn "Kiểm chứng thị giác" -->
+                {% set ai_media = post.media_items | selectattr('media_type', 'in', ['photo', 'video']) | list %}
+                <details class="p-3.5 rounded-xl bg-white/90 border border-[#ECECEE] text-xs group" {{ 'open' if False else '' }}>
+                    <summary class="cursor-pointer font-bold text-[#1C1C1E] flex items-center justify-between select-none">
+                        <span class="flex items-center space-x-2">
+                            <span>🔍 Kiểm chứng thị giác</span>
+                            <span class="text-[11px] font-normal text-[#8A8A8E]">({{ ai_media|length }} tệp từ nguồn: OCR, OSINT, Chép lời video)</span>
+                        </span>
+                        <span class="text-[11px] text-blue-700 group-open:rotate-180 transition-transform">▼</span>
+                    </summary>
+
+                    <div class="mt-3 pt-3 border-t border-[#ECECEE] space-y-3">
+                        <p class="text-[11px] text-[#8A8A8E]">Phân tích tệp ảnh/video gốc từ nguồn tin để kiểm tra tính xác thực hoặc bóc tách phụ đề SRT.</p>
+                        {% if ai_media %}
+                        <div class="space-y-2">
+                            {% for m in ai_media %}
+                            {% set is_local = m.file_path and m.file_path != 'pending_download' and not m.file_path.startswith('http') %}
+                            <div class="p-2 rounded-xl bg-[#F2F2F7] border border-[#ECECEE] flex flex-col sm:flex-row sm:items-center gap-2">
+                                <div class="flex items-center gap-2 sm:w-32 flex-shrink-0">
+                                    {% if m.media_type == 'photo' and is_local %}
+                                    <img src="/media/download?path={{ m.file_path | urlencode }}" alt="" loading="lazy" class="w-10 h-10 object-cover rounded-lg">
+                                    {% elif m.media_type == 'photo' and m.file_path and m.file_path.startswith('http') %}
+                                    <img src="{{ m.file_path }}" alt="" loading="lazy" referrerpolicy="no-referrer" class="w-10 h-10 object-cover rounded-lg">
+                                    {% else %}
+                                    <span class="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-sm">{{ '🎞️' if m.media_type == 'video' else '🖼️' }}</span>
+                                    {% endif %}
+                                    <span class="text-[11px] font-semibold text-[#3C3C43]">{{ 'Video' if m.media_type == 'video' else 'Ảnh' }} {{ loop.index }}</span>
+                                </div>
+                                <div class="flex flex-wrap gap-1">
+                                    {% for code, spec in (media_ai_actions or {}).items() if (spec.media if spec.media is defined else (spec.media_type.value if (spec.media_type is defined and spec.media_type.value is defined) else spec.media_type)) == m.media_type %}
+                                    <button type="button" onclick="startMediaAi({{ m.id }}, '{{ code }}', this)"
+                                        class="px-2 py-1 rounded bg-white hover:bg-cyan-50 text-cyan-700 border border-cyan-200 text-[10px] font-medium transition">{{ spec.title }}</button>
+                                    {% endfor %}
+                                </div>
+                            </div>
                             {% endfor %}
                         </div>
                         {% else %}
-                        <span class="text-[11px] text-amber-700">Tệp chưa có trên server: bấm "Tải từ nguồn về server" ở khung media trước.</span>
+                        <p class="text-xs text-[#AEAEB2]">Bài viết không có tệp ảnh/video nào từ nguồn.</p>
                         {% endif %}
-                    </div>
-                    {% endfor %}
-                </div>
 
-                <div id="media-ai-status" class="hidden mt-3 text-xs"></div>
-                <div id="media-ai-box" class="hidden mt-2 space-y-2">
-                    <div class="flex items-center justify-between text-xs text-[#8A8A8E]">
-                        <span id="media-ai-title">Kết quả</span>
-                        <span class="space-x-3">
-                            <a id="media-ai-file" href="#" class="hidden text-cyan-700 hover:underline font-semibold">⬇️ Tải file phụ đề .srt</a>
-                            <button type="button" onclick="copyMediaAiToEditor()" class="text-cyan-700 hover:underline font-semibold">&darr; Chép vào bản biên tập</button>
+                        <div id="media-ai-status" class="hidden text-xs"></div>
+                        <div id="media-ai-box" class="hidden space-y-2 pt-2">
+                            <div class="flex items-center justify-between text-xs text-[#8A8A8E]">
+                                <span id="media-ai-title" class="font-bold text-cyan-700">Kết quả phân tích:</span>
+                                <span class="space-x-2">
+                                    <a id="media-ai-file" href="#" class="hidden text-cyan-700 hover:underline font-semibold">⬇️ Tải file phụ đề .srt</a>
+                                    <button type="button" onclick="copyMediaAiToEditor()" class="text-cyan-700 hover:underline font-semibold">&darr; Chép vào bản biên tập</button>
+                                </span>
+                            </div>
+                            <textarea id="media-ai-text" rows="6" readonly class="w-full p-2.5 rounded-xl bg-[#F2F2F7] border border-cyan-200 text-xs text-[#1C1C1E] custom-scroll"></textarea>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Sub-Module 2B: Module mới "Ảnh Cho Kịch Bản" -->
+                <div class="p-4 rounded-xl bg-white/90 border border-cyan-100 space-y-3 shadow-sm">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                            <h3 class="text-xs font-bold text-cyan-800 uppercase tracking-wider flex items-center space-x-1.5">
+                                <span>🎨 Ảnh Cho Kịch Bản</span>
+                            </h3>
+                            <p class="text-[11px] text-[#8A8A8E]">Phân tích kịch bản của AI Copilot để chia phân cảnh và sinh ảnh minh họa AI tương ứng.</p>
+                        </div>
+                        <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200 font-mono font-semibold self-start sm:self-auto">
+                            Text-to-Scene
                         </span>
                     </div>
-                    <textarea id="media-ai-text" rows="10" readonly class="w-full p-3 rounded-xl bg-[#F2F2F7] border border-cyan-200 text-xs text-[#1C1C1E] custom-scroll"></textarea>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button type="button" onclick="analyzeScriptScenes()" id="btn-scene-breakdown"
+                            class="px-3.5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow-sm transition flex items-center space-x-1.5">
+                            <span>✨ Phân Tích Cảnh Kịch Bản (Scene Breakdown)</span>
+                        </button>
+                        <button type="button" onclick="generateAllSceneImages()" id="btn-generate-all-scenes" disabled
+                            class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold text-xs shadow-sm transition flex items-center space-x-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span>🎨 Tự Động Vẽ Tất Cả Ảnh Cho Kịch Bản</span>
+                        </button>
+                    </div>
+
+                    <div id="scene-loading" class="hidden text-xs text-cyan-700 py-2 animate-pulse font-medium">
+                        ⏳ Đang phân tích kịch bản thành các phân cảnh và sinh prompt ảnh AI...
+                    </div>
+
+                    <!-- Scenes Container -->
+                    <div id="scenes-container" class="hidden space-y-2.5 pt-2 border-t border-[#ECECEE]">
+                        <div class="flex items-center justify-between text-xs text-[#8A8A8E]">
+                            <span class="font-bold text-[#1C1C1E]">Danh sách các phân cảnh gợi ý:</span>
+                            <span id="scene-count-badge" class="font-mono text-cyan-700 font-semibold"></span>
+                        </div>
+                        <div id="scenes-list" class="space-y-2 max-h-96 overflow-y-auto custom-scroll pr-1"></div>
+                    </div>
                 </div>
-
-                <details class="mt-3 text-xs" ontoggle="if (this.open) loadMediaAiHistory()">
-                    <summary class="cursor-pointer text-[#8A8A8E] hover:text-[#1C1C1E]">🕘 Lịch sử AI ảnh/video của bài này</summary>
-                    <div id="media-ai-history" class="mt-2 space-y-2 max-h-80 overflow-y-auto custom-scroll"></div>
-                </details>
-                {% else %}
-                <p class="text-xs text-[#AEAEB2]">Vai trò của bạn không dùng được AI.</p>
-                {% endif %}
             </div>
-            {% endif %}
 
-            <!-- Real Video Production & Omnichannel Publishing Studio -->
+            <!-- 3. Phòng Dựng Video & Xuất Bản Đa Nền Tảng Thật -->
             <div class="glass-panel p-5 rounded-2xl border border-rose-200 bg-gradient-to-b from-rose-950/20 via-[#F2F2F7] to-[#F2F2F7] space-y-4">
-                <div class="flex items-center justify-between">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div class="flex items-center space-x-2.5">
                         <span class="text-2xl">🎬</span>
                         <div>
-                            <h2 class="text-base font-bold text-rose-700">Phòng Dựng Video & Xuất Bản Đa Nền Tảng Thật</h2>
-                            <p class="text-[11px] text-[#8A8A8E]">Tải media gốc từ nguồn &rarr; Tự động dựng video 9:16 &rarr; Admin duyệt &rarr; Người bấm đăng lên Telegram, YouTube, Facebook</p>
+                            <h2 class="text-base font-bold text-rose-700">3. Phòng Dựng Video & Xuất Bản Đa Nền Tảng Thật</h2>
+                            <p class="text-[11px] text-[#8A8A8E]">
+                                Nguyên tắc an toàn <b>Zero-Auto-Publish</b>: Video lưu vào Kho Video, không tự đăng. Tự động đổi tít cố định trên khung hình.
+                            </p>
                         </div>
                     </div>
-                    <span class="text-[10px] px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-semibold uppercase tracking-wider">
+                    <span class="text-[10px] px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-semibold uppercase tracking-wider self-start sm:self-auto">
                         ⚡ Real Pipeline
                     </span>
                 </div>
 
-                <!-- Master 1-Click Action Bar -->
-                <div class="p-4 rounded-xl bg-gradient-to-r from-amber-500/20 via-rose-500/20 to-indigo-500/20 border border-amber-500/40 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
-                    <div class="flex items-center space-x-3">
-                        <span class="text-3xl">⚡</span>
-                        <div>
-                            <h3 class="text-sm font-extrabold text-amber-700">TỰ ĐỘNG TẠO VIDEO TRONG 1 CLICK</h3>
-                            <p class="text-[11px] text-[#3C3C43]">Tải ảnh/video gốc &rarr; AI viết kịch bản &rarr; Lồng tiếng &rarr; Dựng video 9:16. Không tự đăng — video lưu vào Kho video.</p>
-                        </div>
+                <div class="p-2.5 rounded-xl bg-white/70 border border-[#ECECEE] text-xs text-[#3C3C43] flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <span>🎙️</span>
+                        <span>Giọng đọc phát thanh: <b>Tự động theo giá trị mặc định trong Phòng Giọng Đọc</b></span>
                     </div>
-                    <div class="w-full sm:w-auto flex flex-col sm:flex-row items-stretch gap-2 flex-shrink-0">
-                    {% set default_lang = default_video_language() %}
-                    <select id="video-lang" title="Ngôn ngữ của video: AI viết lời và chọn giọng đọc theo thứ tiếng này"
-                        class="px-3 py-2 rounded-xl bg-white border border-[#D9D9DE] text-xs font-semibold text-[#1C1C1E]">
-                        {% for l in video_languages() %}
-                        <option value="{{ l.code }}" {{ 'selected' if l.code == default_lang else '' }}>{{ l.name }}</option>
-                        {% endfor %}
-                    </select>
-                    <button type="button" onclick="runFullAutoPipeline()" id="btn-full-auto"
-                        class="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-rose-600 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white font-black text-xs shadow-xl shadow-rose-900/40 transition transform active:scale-95 flex items-center justify-center space-x-2 flex-shrink-0">
-                        <span>🚀 1-CLICK TẠO VIDEO</span>
-                    </button>
+                    <a href="/voice?post_id={{ post.id }}" class="text-[11px] text-blue-700 hover:underline">Xem giọng đọc ↗</a>
+                </div>
+
+                <!-- Master Action Buttons Bar (1-Click & Studio side by side) -->
+                <div class="p-4 rounded-xl bg-gradient-to-r from-amber-500/20 via-rose-500/20 to-indigo-500/20 border border-amber-500/40 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+                    <div>
+                        <h3 class="text-sm font-extrabold text-amber-700">TỰ ĐỘNG TẠO VIDEO THEO THIẾT LẬP MỤC 1 & 2</h3>
+                        <p class="text-[11px] text-[#3C3C43]">
+                            AI viết kịch bản &rarr; TTS lồng tiếng &rarr; Phân tích SRT chia prompt &rarr; FFmpeg render video.
+                        </p>
+                    </div>
+
+                    <div class="w-full sm:w-auto flex flex-wrap items-center gap-2 flex-shrink-0">
+                        <button type="button" onclick="runFullAutoPipeline()" id="btn-full-auto"
+                            class="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-rose-600 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white font-black text-xs shadow-md transition transform active:scale-95 flex items-center justify-center space-x-1.5">
+                            <span>🚀 1-CLICK TẠO VIDEO</span>
+                        </button>
+                        <a href="/editor/video?post_id={{ post.id }}"
+                            class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition flex items-center justify-center space-x-1.5">
+                            <span>🎛️ Xưởng Dựng Video (Studio)</span>
+                        </a>
                     </div>
                 </div>
+
                 <div id="full-auto-progress" class="hidden p-3 rounded-xl bg-[#F2F2F7] border border-amber-500/50 text-xs space-y-1.5 animate-pulse">
                     <div class="flex items-center space-x-2 text-amber-700 font-bold" id="auto-progress-text">
                         <span>⏳ Đang khởi chạy quy trình tự động toàn diện...</span>
                     </div>
                 </div>
 
-                <!-- Step 1: Download Original Media -->
-                <div class="p-3.5 rounded-xl bg-[#F2F2F7] border border-[#ECECEE] space-y-2">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <span class="h-5 w-5 rounded-full bg-blue-50 text-blue-700 border border-blue-700/60 flex items-center justify-center text-[10px] font-bold">1</span>
-                            <span class="text-xs font-bold text-[#1C1C1E]">Tải & Đồng Bộ Video/Ảnh Gốc Từ Trang Nguồn:</span>
-                        </div>
-                        <button type="button" onclick="fetchOriginalMedia()" id="btn-fetch-media"
-                            class="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-[11px] shadow transition flex items-center space-x-1.5">
-                            <span>⬇️ Tải Media Gốc Về Máy</span>
-                        </button>
-                    </div>
-                    <div class="text-[11px] text-[#8A8A8E] flex items-center space-x-1">
-                        <span class="text-[#AEAEB2]">Link nguồn:</span>
-                        <a href="{{ post.source_url if post.source_url and post.source_url.startswith('http') else '#' }}" target="_blank" rel="noopener" class="text-blue-700 hover:underline truncate max-w-md font-mono">
-                            {{ post.source_url or 'Không có URL ngoài' }}
-                        </a>
-                    </div>
-                    <div id="fetch-media-status" class="text-[11px] text-[#3C3C43] bg-white/70 p-2 rounded border border-[#ECECEE]">
-                        {% if post.has_media %}
-                        <span class="text-emerald-700">✓ Đã có {{ post.media_count }} tệp media đính kèm bài viết này.</span>
-                        {% else %}
-                        <span class="text-[#AEAEB2]">Chưa tải media gốc. Nhấn nút màu xanh bên trên để hệ thống tự quét và tải video/ảnh từ bài gốc.</span>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <!-- Step 2: Remix and Edit into New Video -->
-                <div class="p-3.5 rounded-xl bg-[#F2F2F7] border border-[#ECECEE] space-y-3">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <span class="h-5 w-5 rounded-full bg-rose-50 text-rose-700 border border-rose-700/60 flex items-center justify-center text-[10px] font-bold">2</span>
-                            <span class="text-xs font-bold text-[#1C1C1E]">Biên Tập & Remix Tạo Video Mới (FFmpeg + AI + Giọng Đọc):</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <a href="/editor/video?post_id={{ post.id }}"
-                                class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] shadow transition flex items-center space-x-1.5">
-                                <span>🎛️ Xưởng Dựng Video (Studio)</span>
+                <!-- Video Preview & Result Container -->
+                <div id="video-result-container" class="{{ '' if latest_video else 'hidden' }} pt-2 border-t border-[#ECECEE] space-y-3">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                        <div class="bg-black/80 rounded-xl p-3 border border-[#ECECEE] flex flex-col items-center">
+                            <span class="text-[11px] font-semibold text-[#8A8A8E] mb-2">Video Hoàn Thiện Thành Phẩm</span>
+                            <div class="w-full max-w-[220px] aspect-[9/16] bg-black rounded-lg overflow-hidden border border-[#D9D9DE] shadow-2xl">
+                                <video id="video-preview-player" controls playsinline class="w-full h-full object-cover"
+                                    {% if latest_video %}src="/media/download?path={{ latest_video.file_path | urlencode }}"{% endif %}>
+                                    Trình duyệt không hỗ trợ xem video.
+                                </video>
+                            </div>
+                            <a id="btn-download-video" href="{{ '/media/download?path=' ~ (latest_video.file_path | urlencode) ~ '&download=1' if latest_video else '#' }}"
+                                class="mt-2.5 w-full max-w-[220px] text-center px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition">
+                                ⬇️ Tải Video Hoàn Chỉnh (.mp4)
                             </a>
-                            <button type="button" onclick="remixNewsVideo()" id="btn-remix-video"
-                                class="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-[11px] shadow transition flex items-center space-x-1.5">
-                                <span>⚡ 1-Click Remix Nhanh</span>
-                            </button>
+                            <a href="/editor/video?post_id={{ post.id }}"
+                                class="mt-1.5 w-full max-w-[220px] text-center px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white font-bold text-xs transition">
+                                ✂️ Chỉnh Sửa Trong Studio
+<button type="button" onclick="setPodcastMins(15)" class="px-2 py-1 rounded-lg bg-white border border-[#D9D9DE] hover:bg-indigo-50 font-semibold text-[11px] transition">15 Phút</button>
+                            </a>
                         </div>
-                    </div>
 
-                    <p class="text-[11px] text-[#8A8A8E] leading-relaxed">
-                        Tự động crop khung dọc 9:16, tạo nền mờ (blur background), chèn tít đỏ Breaking News, ghép giọng đọc theo ngôn ngữ đã chọn ở ô phía trên (mặc định là giọng mặc định ở trang Giọng đọc) và chuẩn hóa âm thanh.
-                    </p>
-
-                    <!-- Preview Container -->
-                    <div id="video-result-container" class="{{ '' if latest_video else 'hidden' }} pt-3 border-t border-[#ECECEE] space-y-3">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                            <div class="bg-black/60 rounded-xl p-3 border border-[#ECECEE] flex flex-col items-center">
-                                <span class="text-[11px] font-semibold text-[#8A8A8E] mb-2">Video Remix Mới (1080x1920 9:16)</span>
-                                <div class="w-full max-w-[220px] aspect-[9/16] bg-black rounded-lg overflow-hidden border border-[#D9D9DE] shadow-2xl">
-                                    <video id="video-preview-player" controls playsinline class="w-full h-full object-cover"
-                                        {% if latest_video %}src="/media/download?path={{ latest_video.file_path | urlencode }}"{% endif %}>
-                                        Trình duyệt của bạn không hỗ trợ thẻ video.
-                                    </video>
+                        <div class="space-y-2.5 text-xs">
+                            <!-- CapCut Pack -->
+                            <div class="p-3.5 rounded-xl bg-white border border-[#ECECEE] shadow-sm">
+                                <h4 class="text-xs font-bold text-amber-700 mb-1 flex items-center space-x-1">
+                                    <span>✂️ Gói Dựng CapCut (.srt + voiceover + script):</span>
+                                </h4>
+                                <p class="text-[11px] text-[#3C3C43] mb-1 leading-relaxed">
+                                    Đã tạo sẵn file phụ đề <b>.srt</b> khớp từng câu, audio giọng đọc và kịch bản để kéo thả thẳng vào CapCut.
+                                </p>
+                                <div class="bg-[#F2F2F7] p-2 rounded text-[10px] font-mono text-[#8A8A8E] break-all" id="capcut-folder-text">
+                                    📁 Sẵn sàng tại: data/outputs/capcut_pack_post_{{ post.id }}
                                 </div>
-                                <a id="btn-download-video" href="{{ '/media/download?path=' ~ (latest_video.file_path | urlencode) ~ '&download=1' if latest_video else '#' }}"
-                                    class="mt-2.5 w-full max-w-[220px] text-center px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition">
-                                    ⬇️ Tải Video Hoàn Chỉnh (.mp4)
-                                </a>
-                                <a href="/editor/video?post_id={{ post.id }}"
-                                    class="mt-1.5 w-full max-w-[220px] text-center px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white font-bold text-xs transition">
-                                    ✂️ Chỉnh Sửa Trong Studio
-                                </a>
+                                <button type="button" onclick="openCapCutFinder()" id="btn-open-capcut-finder"
+                                    class="mt-2 w-full px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-800 text-indigo-700 border border-indigo-700/60 font-semibold text-[11px] transition flex items-center justify-center space-x-1.5">
+                                    <span>📂 Mở Thư Mục CapCut Trong Finder / Explorer</span>
+                                </button>
                             </div>
 
-                            <div class="space-y-2.5 text-xs">
-                                {% if voice_audio_rel or voice_jobs %}
-                                <div class="p-3 rounded-xl bg-white border border-indigo-700/60 shadow-lg">
-                                    <div class="flex items-center justify-between mb-1.5">
-                                        <h4 class="text-xs font-bold text-indigo-700 flex items-center space-x-1.5">
-                                            <span>🎙️ Giọng Đọc Đã Tạo (Voiceover):</span>
-                                        </h4>
-                                        <a href="/voice?post_id={{ post.id }}" class="text-[11px] text-blue-700 hover:underline">Phòng Giọng Đọc ↗</a>
-                                    </div>
-                                    {% if voice_audio_rel %}
-                                    <audio controls class="w-full h-8 mb-1" src="/media/download?path={{ voice_audio_rel | urlencode }}"></audio>
-                                    {% elif voice_jobs %}
-                                    <audio controls class="w-full h-8 mb-1" src="/api/voice/jobs/{{ voice_jobs[0].id }}/audio"></audio>
-                                    <div class="text-[10px] text-[#8A8A8E]">Giọng: {{ voice_jobs[0].voice_label }} ({{ '%.1f' % (voice_jobs[0].duration_seconds or 0) }}s)</div>
-                                    {% endif %}
+                            <div class="p-3 rounded-xl bg-white border border-[#ECECEE]">
+                                <h4 class="text-xs font-bold text-indigo-700 mb-1">📝 Kịch Bản Đọc & Tít:</h4>
+                                <div id="video-script-text" class="text-[11px] text-[#1C1C1E] bg-[#F2F2F7] p-2.5 rounded max-h-36 overflow-y-auto custom-scroll leading-relaxed font-sans">
+                                    {{ (post.edited_text if post.edited_text is defined else None) or (post.title if post.title is defined else None) or (post.resolved_text if post.resolved_text is defined else None) or (post.original_text if post.original_text is defined else None) or 'Chưa có kịch bản.' }}
                                 </div>
-                                {% endif %}
-                                <div class="p-3 rounded-xl bg-white border border-[#ECECEE]">
-                                    <h4 class="text-xs font-bold text-amber-700 mb-1 flex items-center space-x-1">
-                                        <span>✂️ Gói Dựng CapCut (.srt + voiceover + script):</span>
-                                    </h4>
-                                    <p class="text-[11px] text-[#3C3C43] mb-1">
-                                        Đã tạo sẵn file phụ đề <b>.srt</b> khớp từng câu, audio giọng đọc và kịch bản để kéo thả vào CapCut.
-                                    </p>
-                                    <div class="bg-[#F2F2F7] p-2 rounded text-[10px] font-mono text-[#8A8A8E] break-all" id="capcut-folder-text">
-                                        Đang tải thư mục...
-                                    </div>
-                                    <button type="button" onclick="openCapCutFinder()" id="btn-open-capcut-finder"
-                                        class="mt-2 w-full px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-800 text-indigo-700 border border-indigo-700/60 font-semibold text-[11px] transition flex items-center justify-center space-x-1.5">
-                                        <span>📂 Mở Thư Mục CapCut Trong Finder (Mac)</span>
-                                    </button>
-                                </div>
-
-                                <div class="p-3 rounded-xl bg-white border border-[#ECECEE]">
-                                    <h4 class="text-xs font-bold text-indigo-700 mb-1">📝 Kịch Bản Đọc & Tít:</h4>
-                                    <div id="video-script-text" class="text-[11px] text-[#1C1C1E] bg-[#F2F2F7] p-2.5 rounded max-h-32 overflow-y-auto custom-scroll leading-relaxed font-sans">
-                                    </div>
-                                    <div id="video-hashtags-text" class="text-[10px] text-cyan-700 font-mono mt-1"></div>
-                                </div>
+                                <div id="video-hashtags-text" class="text-[10px] text-cyan-700 font-mono mt-1"></div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Step 3: Multi-Platform Publishing -->
-                <div class="p-3.5 rounded-xl bg-[#F2F2F7] border border-[#ECECEE] space-y-3">
+                <!-- 6. Xuất Bản Lên Kênh Telegram, Kênh YouTube, Fanpage -->
+                <div class="p-3.5 rounded-xl bg-white/90 border border-emerald-200 space-y-3 pt-4">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-2">
-                            <span class="h-5 w-5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-700/60 flex items-center justify-center text-[10px] font-bold">3</span>
-                            <span class="text-xs font-bold text-[#1C1C1E]">Xuất Bản Lên Kênh Telegram, Kênh YouTube, Fanpage:</span>
+                            <span class="h-5 w-5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-700/60 flex items-center justify-center text-[10px] font-bold">6</span>
+                            <span class="text-xs font-bold text-[#1C1C1E]">6. Xuất Bản Lên Kênh Telegram, Kênh YouTube, Fanpage</span>
                         </div>
                         <a href="/settings/ai-config" class="text-[11px] text-indigo-700 hover:underline">
                             + Thêm Kênh Đăng
@@ -587,6 +682,7 @@
                         🔒 Chỉ đăng được sau khi bài ở trạng thái <b>Đã duyệt</b> hoặc <b>Hoàn thành</b> (Chủ biên / Admin duyệt).
                     </div>
                     {% endif %}
+
                     <!-- Action Button -->
                     <div class="flex items-center space-x-3 pt-1">
                         <button type="button" onclick="publishVideoToChannels()" id="btn-publish-channels" {{ '' if can_publish else 'disabled' }}
@@ -654,7 +750,7 @@
                             <span class="text-[#3C3C43] ml-1">{{ log.notes }}</span>
                         </div>
                         <span class="text-[11px] text-[#AEAEB2] flex-shrink-0 ml-2">
-                            {{ log.created_at.strftime('%H:%M %d/%m') }}
+                            {{ fmt_dt(log.created_at, '%H:%M %d/%m') }}
                         </span>
                     </div>
                     {% else %}
@@ -667,8 +763,8 @@
 </div>
 
 <script>
-let currentRemixVideoPath = {{ (latest_video.file_path if latest_video else '') | tojson }};
-let currentScriptData = {{ latest_script | tojson }};
+let currentRemixVideoPath = {{ (latest_video.file_path if (latest_video is defined and latest_video) else '') | tojson }};
+let currentScriptData = {{ (latest_script if (latest_script is defined and latest_script) else None) | tojson }};
 
 function esc(v) {
     return String(v ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
@@ -788,6 +884,10 @@ function showMediaAiResult(job) {
         status.className = 'mt-3 text-xs text-rose-700';
         status.textContent = '✗ ' + job.label + ': ' + (job.error || 'AI không phản hồi.');
         box.classList.add('hidden');
+else if (m === 3) callAiApi('script_long');
+    else if (m === 15) callAiApi('deep_dive_15min');
+    else callAiApi('deep_dive');
+}
         return;
     }
     status.classList.add('hidden');
@@ -855,6 +955,275 @@ function copyAiToEditor() {
         if (!confirm('Ghi đè nội dung đang có trong ô biên tập?')) return;
     }
     editor.value = aiText;
+}
+
+function updateScriptMinutesEstimate() {
+    const input = document.getElementById('ai-custom-minutes');
+    const preview = document.getElementById('custom-words-preview');
+    const mins = parseFloat(input?.value || '1');
+    const words = Math.max(1, Math.round(mins * 140));
+    if (preview) preview.textContent = words.toLocaleString('vi-VN');
+}
+
+function toggleCustomMinutes() {
+    const sel = document.getElementById('ai-script-length')?.value;
+    const wrap = document.getElementById('custom-minutes-wrap');
+    if (wrap) {
+        wrap.style.display = (sel === 'custom') ? 'block' : 'none';
+    }
+    updateScriptMinutesEstimate();
+}
+
+async function generateIntegratedAiScript() {
+    const btn = document.getElementById('btn-integrated-script');
+    const loading = document.getElementById('ai-loading');
+    const resultBox = document.getElementById('ai-result-box');
+    const resultText = document.getElementById('ai-result-text');
+
+    btn.disabled = true;
+    loading.classList.remove('hidden');
+    resultBox.classList.add('hidden');
+
+    const lang = document.getElementById('ai-lang')?.value || 'vi';
+    const scriptLen = document.getElementById('ai-script-length')?.value || 'shorts_60s';
+    const customMin = parseFloat(document.getElementById('ai-custom-minutes')?.value || '3.0');
+    const headlineStyle = document.getElementById('ai-headline-style')?.value || 'sensational';
+    const aspect = document.getElementById('ai-aspect-ratio')?.value || '9:16';
+
+    const lengthLabels = {
+        'shorts_60s': 'Shorts 60s (~140 từ)',
+        'youtube_3_5m': 'YouTube 3-5 phút (~650 từ)',
+        'podcast_10_15m': 'Podcast 10-15 phút (~1800 từ)',
+        'custom': `${customMin} phút (~${Math.round(customMin * 140)} từ)`
+    };
+    const headlineLabels = {
+        'sensational': 'Giật gân thu hút',
+        'serious': 'Thời sự nghiêm túc',
+        'curiosity': 'Kích thích tò mò',
+        'question': 'Dạng câu hỏi',
+        'seo': 'Chuẩn SEO'
+    };
+
+    try {
+        // Step 1: Attempt direct integrated_script API call
+        let data = await postJson('/api/ai-assist', {
+            post_id: {{ post.id }},
+            action: 'integrated_script',
+            language: lang,
+            script_length: scriptLen,
+            custom_minutes: customMin,
+            headline_style: headlineStyle,
+            aspect_ratio: aspect
+        });
+
+        if (data.usage) showAiUsage(data.usage);
+
+        // Step 2: Fallback for running frozen binary with strict action whitelist
+        if (!data.success && data.error && (data.error.includes('không hợp lệ') || data.error.includes('invalid'))) {
+            let targetAction = 'script';
+            if (scriptLen === 'youtube_3_5m' || (scriptLen === 'custom' && customMin > 2 && customMin <= 7)) {
+                targetAction = 'script_long';
+            } else if (scriptLen === 'podcast_10_15m' || (scriptLen === 'custom' && customMin > 7)) {
+                targetAction = 'rewrite';
+            }
+
+            let fallbackData = await postJson('/api/ai-assist', {
+                post_id: {{ post.id }},
+                action: targetAction
+            });
+
+            // If script_long hit rate limit or error, retry with standard 'script'
+            if (!fallbackData.success && targetAction !== 'script') {
+                fallbackData = await postJson('/api/ai-assist', {
+                    post_id: {{ post.id }},
+                    action: 'script'
+                });
+            }
+
+            if (fallbackData.success) {
+                if (fallbackData.usage) showAiUsage(fallbackData.usage);
+                const headerInfo = 
+`================================================================================
+🎬 KỊCH BẢN BIÊN TẬP TÍCH HỢP (THÁP NGƯỢC & 5W1H)
+• Khung hình: ${aspect} | Ngôn ngữ: ${lang.toUpperCase()}
+• Thời lượng: ${lengthLabels[scriptLen] || scriptLen} (~140 từ/phút)
+• Phong cách tiêu đề: ${headlineLabels[headlineStyle] || headlineStyle}
+================================================================================\n\n`;
+                resultText.value = headerInfo + fallbackData.result;
+                resultBox.classList.remove('hidden');
+                resultBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                if (document.getElementById('ai-history-box')?.open) loadAiHistory();
+                return;
+            } else {
+                data = fallbackData;
+            }
+        }
+
+        if (data.success) {
+            resultText.value = data.result;
+            resultBox.classList.remove('hidden');
+            resultBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            if (document.getElementById('ai-history-box')?.open) loadAiHistory();
+        } else {
+            alert('AI: ' + (data.error || 'Có lỗi xảy ra khi xử lý kịch bản.'));
+        }
+    } catch (e) {
+        alert('Lỗi kết nối AI: ' + e);
+    } finally {
+        btn.disabled = false;
+        loading.classList.add('hidden');
+    }
+}
+
+let currentScenesList = [];
+
+async function analyzeScriptScenes() {
+    const btn = document.getElementById('btn-scene-breakdown');
+    const loading = document.getElementById('scene-loading');
+    const container = document.getElementById('scenes-container');
+    const list = document.getElementById('scenes-list');
+    const badge = document.getElementById('scene-count-badge');
+    const genAllBtn = document.getElementById('btn-generate-all-scenes');
+
+    const editorText = document.getElementById('editor-text')?.value || '';
+    const aiText = document.getElementById('ai-result-text')?.value || '';
+    const scriptText = editorText.trim() || aiText.trim();
+
+    if (!scriptText) {
+        alert('Vui lòng tạo kịch bản ở Mục 1 hoặc nhập nội dung biên tập trước khi phân tích cảnh!');
+        return;
+    }
+
+    btn.disabled = true;
+    loading.classList.remove('hidden');
+    container.classList.add('hidden');
+
+    const aspect = document.getElementById('ai-aspect-ratio')?.value || '9:16';
+
+    try {
+        const data = await postJson('/api/ai/script-scenes', {
+            post_id: {{ post.id }},
+            script_text: scriptText,
+            aspect_ratio: aspect
+        });
+        if (data.success && data.scenes && data.scenes.length > 0) {
+            currentScenesList = data.scenes;
+            badge.textContent = `${currentScenesList.length} cảnh`;
+            list.innerHTML = currentScenesList.map(sc => `
+                <div class="p-3 rounded-xl bg-white border border-[#ECECEE] space-y-2 shadow-sm" id="scene-card-${sc.scene_id}">
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="font-bold text-cyan-800">Cảnh ${esc(sc.scene_id)} (${esc(sc.timestamp_estimate || '00:00')})</span>
+                        <button type="button" onclick="generateSingleSceneImage(${sc.scene_id})" id="btn-draw-scene-${sc.scene_id}"
+                            class="px-2.5 py-1 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-700 border border-cyan-200 font-semibold text-[10px] transition">
+                            🎨 Vẽ ảnh cảnh này
+                        </button>
+                    </div>
+                    <div class="text-xs text-[#1C1C1E] italic bg-[#F2F2F7] p-2 rounded leading-relaxed">
+                        🗣️ "${esc(sc.spoken_text || '')}"
+                    </div>
+                    <div class="text-[11px] text-[#3C3C43]">
+                        <b>Mô tả cảnh:</b> ${esc(sc.scene_description || '')}
+                    </div>
+                    <div class="text-[10px] text-[#8A8A8E] font-mono truncate" title="${esc(sc.ai_prompt || '')}">
+                        🤖 Prompt: ${esc(sc.ai_prompt || '')}
+                    </div>
+                    <div id="scene-img-preview-${sc.scene_id}" class="hidden pt-1">
+                        <img src="" alt="" class="w-full h-36 object-cover rounded-lg border border-[#D9D9DE]">
+                    </div>
+                </div>
+            `).join('');
+            container.classList.remove('hidden');
+            genAllBtn.disabled = false;
+        } else {
+            alert('Không thể phân tích cảnh: ' + (data.error || 'AI không trả về danh sách cảnh.'));
+        }
+    } catch (e) {
+        alert('Lỗi phân tích cảnh: ' + e);
+    } finally {
+        btn.disabled = false;
+        loading.classList.add('hidden');
+    }
+}
+
+async function generateSingleSceneImage(sceneId) {
+    const sc = currentScenesList.find(s => s.scene_id === sceneId);
+    if (!sc) return;
+    const btn = document.getElementById(`btn-draw-scene-${sceneId}`);
+    const preview = document.getElementById(`scene-img-preview-${sceneId}`);
+    btn.disabled = true;
+    const oldText = btn.innerHTML;
+    btn.innerHTML = '⏳ Đang vẽ...';
+
+    const aspect = document.getElementById('ai-aspect-ratio')?.value || '9:16';
+    const prompt = sc.ai_prompt || sc.scene_description;
+
+    try {
+        const data = await postJson('/api/ai/generate-scene-image', {
+            post_id: {{ post.id }},
+            scene_id: sceneId,
+            prompt: prompt,
+            aspect_ratio: aspect
+        });
+        if (data.success && data.image_url) {
+            btn.innerHTML = '✓ Đã tạo ảnh';
+            btn.className = 'px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-[10px]';
+            const img = preview.querySelector('img');
+            img.src = data.image_url;
+            preview.classList.remove('hidden');
+        } else {
+            alert('Lỗi vẽ ảnh: ' + (data.error || 'Không tạo được'));
+            btn.innerHTML = oldText;
+            btn.disabled = false;
+        }
+    } catch (e) {
+        alert('Lỗi kết nối máy chủ: ' + e);
+        btn.innerHTML = oldText;
+        btn.disabled = false;
+    }
+}
+
+async function generateAllSceneImages() {
+    if (!currentScenesList.length) {
+        alert('Chưa có danh sách phân cảnh. Hãy bấm Phân Tích Cảnh Kịch Bản trước!');
+        return;
+    }
+    const btn = document.getElementById('btn-generate-all-scenes');
+    btn.disabled = true;
+    const oldHtml = btn.innerHTML;
+    btn.innerHTML = '<span>⏳ Đang vẽ toàn bộ ảnh (có thể mất 1-2 phút)...</span>';
+
+    const aspect = document.getElementById('ai-aspect-ratio')?.value || '9:16';
+
+    try {
+        const data = await postJson('/api/ai/generate-all-scenes', {
+            post_id: {{ post.id }},
+            scenes: currentScenesList,
+            aspect_ratio: aspect
+        });
+        if (data.success && data.generated) {
+            for (const item of data.generated) {
+                const preview = document.getElementById(`scene-img-preview-${item.scene_id}`);
+                const b = document.getElementById(`btn-draw-scene-${item.scene_id}`);
+                if (preview && item.image_url) {
+                    const img = preview.querySelector('img');
+                    img.src = item.image_url;
+                    preview.classList.remove('hidden');
+                }
+                if (b) {
+                    b.innerHTML = '✓ Đã tạo ảnh';
+                    b.className = 'px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-[10px]';
+                }
+            }
+            alert(`✓ Đã vẽ thành công ${data.count} ảnh cho kịch bản và tự động nạp vào tư liệu bài viết!`);
+        } else {
+            alert('Lỗi: ' + (data.error || 'Không thể tạo ảnh'));
+        }
+    } catch (e) {
+        alert('Lỗi kết nối máy chủ: ' + e);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = oldHtml;
+    }
 }
 
 async function downloadFromSource(itemId, btn) {
@@ -1056,7 +1425,7 @@ async function openCapCutFinder() {
     }
 }
 
-// 5. 1-click: tải media -> kịch bản -> lồng tiếng -> dựng video (không đăng)
+// 5. 1-click: AI viết kịch bản -> TTS lồng tiếng -> phân tích srt chia prompt -> FFmpeg render video
 async function runFullAutoPipeline() {
     const btn = document.getElementById('btn-full-auto');
     const progBox = document.getElementById('full-auto-progress');
@@ -1066,17 +1435,32 @@ async function runFullAutoPipeline() {
     btn.classList.add('opacity-50', 'cursor-not-allowed');
     progBox.classList.remove('hidden');
     progBox.classList.add('animate-pulse');
-    progText.innerHTML = '<span>⏳ [1/3] Đang tải ảnh/video gốc và viết kịch bản AI...</span>';
-    const t1 = setTimeout(() => { progText.innerHTML = '<span>⚙️ [2/3] Đang lồng tiếng và dựng video 9:16 bằng FFmpeg...</span>'; }, 4000);
-    const t2 = setTimeout(() => { progText.innerHTML = '<span>📦 [3/3] Đang đóng gói phụ đề .SRT và kịch bản CapCut...</span>'; }, 9000);
+
+    const lang = document.getElementById('ai-lang')?.value || 'vi';
+    const scriptLen = document.getElementById('ai-script-length')?.value || 'shorts_60s';
+    const customMin = parseFloat(document.getElementById('ai-custom-minutes')?.value || '1.0');
+    const headlineStyle = document.getElementById('ai-headline-style')?.value || 'sensational';
+    const aspect = document.getElementById('ai-aspect-ratio')?.value || '9:16';
+
+    progText.innerHTML = '<span>⏳ [1/4] AI đang viết kịch bản chuẩn 5W1H & Tháp Ngược...</span>';
+    const t1 = setTimeout(() => { progText.innerHTML = '<span>🎙️ [2/4] TTS đang lồng tiếng bằng giọng phát thanh mặc định...</span>'; }, 3000);
+    const t2 = setTimeout(() => { progText.innerHTML = '<span>🖼️ [3/4] Phân tích SRT chia phân cảnh và nạp prompt ảnh...</span>'; }, 7000);
+    const t3 = setTimeout(() => { progText.innerHTML = `<span>⚙️ [4/4] FFmpeg render video khung hình ${aspect}...</span>`; }, 12000);
 
     try {
-        const data = await postJson('/api/full-auto-pipeline', { post_id: {{ post.id }}, language: document.getElementById('video-lang').value });
+        const data = await postJson('/api/full-auto-pipeline', {
+            post_id: {{ post.id }},
+            language: lang,
+            script_length: scriptLen,
+            custom_minutes: customMin,
+            headline_style: headlineStyle,
+            aspect_ratio: aspect
+        });
         if (data.success) {
             showVideoResult(data);
             progBox.classList.remove('animate-pulse');
             progText.className = 'flex items-center space-x-2 text-emerald-700 font-bold';
-            progText.innerHTML = `<span>✓ Đã tạo xong video (dùng ${esc(data.media_count)} tệp media). Video đã lưu vào Kho video — chưa đăng lên kênh nào.</span>`;
+            progText.innerHTML = `<span>✓ Đã tạo xong video ${esc(aspect)}. Video đã lưu vào Kho video — chưa đăng lên kênh nào.</span>`;
         } else {
             alert('Lỗi quy trình: ' + (data.error || 'Có lỗi xảy ra'));
             progBox.classList.add('hidden');
@@ -1087,6 +1471,7 @@ async function runFullAutoPipeline() {
     } finally {
         clearTimeout(t1);
         clearTimeout(t2);
+        clearTimeout(t3);
         btn.disabled = false;
         btn.classList.remove('opacity-50', 'cursor-not-allowed');
     }
