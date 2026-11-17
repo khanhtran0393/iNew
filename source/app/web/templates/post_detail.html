@@ -884,10 +884,6 @@ function showMediaAiResult(job) {
         status.className = 'mt-3 text-xs text-rose-700';
         status.textContent = '✗ ' + job.label + ': ' + (job.error || 'AI không phản hồi.');
         box.classList.add('hidden');
-else if (m === 3) callAiApi('script_long');
-    else if (m === 15) callAiApi('deep_dive_15min');
-    else callAiApi('deep_dive');
-}
         return;
     }
     status.classList.add('hidden');
