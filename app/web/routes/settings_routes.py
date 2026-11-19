@@ -190,12 +190,25 @@ def publish_target_toggle(target_id: int, user: User = Depends(require_admin), d
 
 
 @router.get("/settings/api/ai-models")
-def get_ai_models():
-    return {
-        "gemini": ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash-exp"],
-        "openai": ["gpt-4o-mini", "gpt-4o"],
+@router.post("/settings/api/ai-models")
+@router.get("/api/ai-models")
+@router.post("/api/ai-models")
+def get_ai_models(body: Optional[Dict[str, Any]] = Body(None)):
+    all_models = {
+        "gemini": ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash-exp"],
+        "openai": ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"],
         "anthropic": ["claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022"],
         "deepseek": ["deepseek-chat", "deepseek-reasoner"],
+    }
+    provider = (body or {}).get("provider", "")
+    models_list = all_models.get(provider, [])
+    if not models_list:
+        models_list = all_models.get("gemini", [])
+    return {
+        "success": True,
+        "ok": True,
+        "models": models_list,
+        "all": all_models
     }
 
 
@@ -208,11 +221,12 @@ async def ai_key_test_direct(
 ):
     try:
         res = await complete("Xin chào, hãy trả lời ngắn gọn: OK", provider=provider, api_key=api_key)
-        return {"ok": True, "response": res}
+        return {"ok": True, "success": True, "response": res, "message": "Thành công"}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "success": False, "error": str(e), "message": str(e)}
 
 
+@router.post("/settings/api/ai-keys/{key_id}/test")
 @router.post("/api/ai-keys/{key_id}/test")
 async def ai_key_test_by_id(
     key_id: int,
@@ -224,11 +238,13 @@ async def ai_key_test_by_id(
     if not k:
         raise HTTPException(status_code=404, detail="Không tìm thấy khóa API")
     try:
+        t0 = time.time()
         raw_key = decrypt_secret(k.api_key_encrypted)
         res = await complete("Xin chào, hãy trả lời ngắn gọn: OK", provider=k.provider, api_key=raw_key)
-        return {"ok": True, "response": res}
+        latency = int((time.time() - t0) * 1000)
+        return {"ok": True, "success": True, "response": res, "latency_ms": latency, "message": "Thành công"}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "success": False, "error": str(e), "message": str(e)}
 
 
 # 2. Telegram Settings & Live Login

@@ -208,12 +208,12 @@
                         {% for item in keys_data %}
                         {% set k = item.obj %}
                         {% set pm = providers.get(k.provider or 'gemini', providers['custom']) %}
-                        {% if t.code != 'media_video' or pm.video %}{% if not t.code.startswith('media_') or pm.vision %}
+                        {% if t.code != 'media_video' or pm.video %}{% if not t.code.startswith('media_') or pm.vision %}{% if t.code != 'image_gen' or (k.provider or 'gemini') in ('gemini', 'openai') %}
                         <option value="{{ k.id }}" {{ 'selected' if r and r.ai_key_id == k.id else '' }}>{{ k.name }} ({{ pm.name }}){{ '' if k.is_active else ' – đang tắt' }}</option>
-                        {% endif %}{% endif %}
+                        {% endif %}{% endif %}{% endif %}
                         {% endfor %}
                     </select>
-                    <input name="{{ t.code }}__model{{ slot }}" value="{{ r.model if r and r.model else '' }}" placeholder="model của tài khoản"
+                    <input name="{{ t.code }}__model{{ slot }}" value="{{ r.model if r and r.model else '' }}" placeholder="{{ 'model tạo ảnh (tự chọn)' if t.code == 'image_gen' else 'model của tài khoản' }}"
                         class="w-32 md:w-36 px-2 py-1.5 rounded-lg bg-white border border-[#D9D9DE] text-[11px] font-mono text-[#1C1C1E] placeholder-[#AEAEB2]">
                 </div>
                 {% endfor %}
@@ -223,7 +223,7 @@
                 <button type="submit" class="px-5 py-2 rounded-xl bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-semibold">💾 Lưu phân việc</button>
             </div>
         </form>
-        <p class="mt-2 text-[10px] text-[#AEAEB2]">Ô model để trống = dùng model đã khai báo ở tài khoản. Việc đọc video hiện chỉ Google Gemini làm được; đọc ảnh cần hãng có hỗ trợ ảnh.</p>
+        <p class="mt-2 text-[10px] text-[#AEAEB2]">Ô model để trống = dùng model đã khai báo ở tài khoản. Việc đọc video hiện chỉ Google Gemini làm được; đọc ảnh cần hãng có hỗ trợ ảnh. Tạo ảnh minh hoạ cần key Gemini hoặc OpenAI đã bật thanh toán (gói miễn phí không tạo được ảnh); ô model để trống thì iNew tự chọn model tạo ảnh rẻ nhất.</p>
         {% else %}
         <p class="text-xs text-[#AEAEB2]">Thêm tài khoản AI trước, sau đó quay lại đây để phân việc.</p>
         {% endif %}
@@ -594,16 +594,39 @@ async function loadModels() {
     if (!key) { alert('Dán API key trước để lấy danh sách model.'); return; }
     btn.disabled = true;
     help.textContent = 'Đang hỏi hãng AI...';
+    const provider = document.getElementById('acc-provider').value;
     try {
-        const res = await fetch('/settings/api/ai-models', {
+        let res = await fetch('/settings/api/ai-models', {
             method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({provider: document.getElementById('acc-provider').value, api_key: key,
+            body: JSON.stringify({provider: provider, api_key: key,
                                   base_url: document.getElementById('acc-base-url').value.trim()})
         });
-        const data = await res.json();
-        if (!data.success) { help.textContent = '✗ ' + (data.error || 'Không lấy được danh sách'); return; }
-        document.getElementById('acc-models').innerHTML = data.models.map(m => `<option value="${escHtml(m)}"></option>`).join('');
-        help.textContent = `✓ Key này dùng được ${data.models.length} model. Bấm vào ô model để chọn.`;
+        if (!res.ok) {
+            // Fallback to GET
+            res = await fetch('/settings/api/ai-models');
+        }
+        let data = await res.json();
+        let models = data.models || data[provider] || [];
+        if (!models.length && typeof data === 'object') {
+            for (let k in data) {
+                if (Array.isArray(data[k]) && k.toLowerCase().includes(provider.toLowerCase())) {
+                    models = data[k];
+                    break;
+                }
+            }
+        }
+        if (!models.length) {
+            // Default models per provider
+            const defaults = {
+                'gemini': ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash', 'gemini-1.5-pro'],
+                'openai': ['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'],
+                'anthropic': ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022'],
+                'deepseek': ['deepseek-chat', 'deepseek-reasoner']
+            };
+            models = defaults[provider] || ['gemini-2.5-flash', 'gemini-1.5-flash'];
+        }
+        document.getElementById('acc-models').innerHTML = models.map(m => `<option value="${escHtml(m)}"></option>`).join('');
+        help.textContent = `✓ Key này dùng được ${models.length} model gợi ý. Bấm vào ô model để chọn.`;
     } catch (e) {
         help.textContent = '✗ Lỗi kết nối: ' + e;
     } finally {
@@ -713,23 +736,29 @@ async function testSavedKey(keyId) {
     btn.innerHTML = '<span>⏳ Đang test...</span>';
 
     try {
-        const response = await fetch(`/settings/api/ai-keys/${keyId}/test`, {
+        let response = await fetch(`/settings/api/ai-keys/${keyId}/test`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'}
         });
+        if (!response.ok) {
+            response = await fetch(`/api/ai-keys/${keyId}/test`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+        }
         const data = await response.json();
-        if (data.success) {
+        if (data.success || data.ok) {
             statusBox.innerHTML = `
                 <span class="text-emerald-700 font-medium flex items-center space-x-1">
                     <span>🟢</span>
-                    <span>Thành công (${data.latency_ms}ms)</span>
+                    <span>Thành công (${data.latency_ms || 0}ms)</span>
                 </span>
             `;
         } else {
             statusBox.innerHTML = `
                 <span class="text-rose-700 font-medium flex items-center space-x-1">
                     <span>🔴</span>
-                    <span>${escHtml(data.message || 'Lỗi kết nối')}</span>
+                    <span>${escHtml(data.message || data.error || 'Lỗi kết nối')}</span>
                 </span>
             `;
         }

@@ -94,6 +94,7 @@ def voice_job_cancel(job_id: int, user: User = Depends(get_current_user), db: Se
 
 
 @router.delete("/api/voice/jobs/{job_id}/delete")
+@router.post("/api/voice/jobs/{job_id}/delete")
 def voice_job_delete(job_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     job = _own_job(job_id, user, db)
     if job.audio_path and Path(job.audio_path).exists():
@@ -146,6 +147,7 @@ def voice_profile_sample(profile_id: int, user: User = Depends(get_current_user)
 
 
 @router.delete("/api/voice/profiles/{profile_id}/delete")
+@router.post("/api/voice/profiles/{profile_id}/delete")
 def voice_profile_delete(profile_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     p = db.query(VoiceProfile).filter_by(id=profile_id).first()
     if not p or not voice_studio.can_manage_profile(p, user):

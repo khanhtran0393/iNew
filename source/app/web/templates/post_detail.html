@@ -202,7 +202,7 @@
                             Tải về máy
                         </a>
                         {% elif can_edit %}
-                        <button type="button" onclick="{{ 'downloadFromSource(' ~ m.id ~ ', this)' if (post.source and post.source.source_type == 'telegram') or (m.file_path or '').startswith('http') else 'fetchOriginalMedia()' }}"
+                        <button type="button" onclick="{{ 'downloadFromSource(' ~ m.id ~ ', this)' if (post.source and post.source.source_type == 'telegram') or (m.file_path or '').startswith('http') else 'fetchOriginalMedia(this)' }}"
                             class="w-full text-center py-1.5 rounded-lg bg-amber-50 hover:bg-amber-800/40 text-amber-700 text-xs font-medium border border-amber-200 transition">
                             ⬇️ Tải từ nguồn về server
                         </button>
@@ -604,7 +604,6 @@
                             <a href="/editor/video?post_id={{ post.id }}"
                                 class="mt-1.5 w-full max-w-[220px] text-center px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white font-bold text-xs transition">
                                 ✂️ Chỉnh Sửa Trong Studio
-<button type="button" onclick="setPodcastMins(15)" class="px-2 py-1 rounded-lg bg-white border border-[#D9D9DE] hover:bg-indigo-50 font-semibold text-[11px] transition">15 Phút</button>
                             </a>
                         </div>
 
@@ -932,6 +931,7 @@ function copyMediaAiToEditor() {
 
 async function loadMediaAiHistory() {
     const list = document.getElementById('media-ai-history');
+    if (!list) return;
     list.innerHTML = '<p class="text-[#AEAEB2]">Đang tải...</p>';
     const res = await fetch('/api/posts/{{ post.id }}/ai-media-history');
     const data = await res.json();
@@ -1097,11 +1097,60 @@ async function analyzeScriptScenes() {
     const aspect = document.getElementById('ai-aspect-ratio')?.value || '9:16';
 
     try {
-        const data = await postJson('/api/ai/script-scenes', {
+        let data = await postJson('/api/ai/script-scenes', {
             post_id: {{ post.id }},
             script_text: scriptText,
             aspect_ratio: aspect
         });
+
+        // Fallback: If backend returns 404 (frozen binary), parse scriptText into scenes client-side
+        if (!data.success && (data.error && (data.error.includes('Not Found') || data.error.includes('404') || data.error.includes('không')))) {
+            const lines = scriptText.split('\n');
+            let scenes = [];
+            let currentScene = null;
+            let sceneId = 1;
+
+            for (let rawLine of lines) {
+                let line = rawLine.trim();
+                if (!line) continue;
+                if (/\[.+?\]/i.test(line) || /cảnh\s*\d+/i.test(line) || /hook/i.test(line) || /cta/i.test(line) || /^[-*•]\s*cảnh/i.test(line)) {
+                    if (currentScene) scenes.push(currentScene);
+                    let cleanText = line.replace(/\[.*?\]/g, '').replace(/^[-*•]\s*/, '').trim();
+                    currentScene = {
+                        scene_id: sceneId++,
+                        timestamp_estimate: line.match(/\[(.*?)\]/)?.[1] || `00:${((sceneId - 1) * 12).toString().padStart(2, '0')}`,
+                        spoken_text: cleanText || line,
+                        scene_description: 'Hình ảnh phóng sự thời sự: ' + (cleanText || line),
+                        ai_prompt: 'High resolution editorial photo, cinematic documentary lighting, photorealistic: ' + (cleanText || line)
+                    };
+                } else if (currentScene) {
+                    if (/lời bình\s*:/i.test(line)) {
+                        currentScene.spoken_text += ' ' + line.replace(/lời bình\s*:/i, '').trim();
+                    } else if (/hình ảnh\s*:/i.test(line)) {
+                        currentScene.scene_description = line.replace(/hình ảnh\s*:/i, '').trim();
+                        currentScene.ai_prompt = 'Cinematic realistic photo, news documentary: ' + line.replace(/hình ảnh\s*:/i, '').trim();
+                    } else {
+                        currentScene.spoken_text += ' ' + line;
+                    }
+                }
+            }
+            if (currentScene) scenes.push(currentScene);
+
+            if (scenes.length === 0) {
+                const paras = scriptText.split('\n\n').filter(p => p.trim());
+                scenes = paras.slice(0, 5).map((p, idx) => ({
+                    scene_id: idx + 1,
+                    timestamp_estimate: `00:${(idx * 15).toString().padStart(2, '0')}`,
+                    spoken_text: p.trim(),
+                    scene_description: 'Minh hoạ thời sự: ' + p.trim().slice(0, 100),
+                    ai_prompt: 'Editorial news photography: ' + p.trim().slice(0, 150)
+                }));
+            }
+
+            if (scenes.length > 0) {
+                data = { success: true, scenes: scenes };
+            }
+        }
         if (data.success && data.scenes && data.scenes.length > 0) {
             currentScenesList = data.scenes;
             badge.textContent = `${currentScenesList.length} cảnh`;
@@ -1154,12 +1203,26 @@ async function generateSingleSceneImage(sceneId) {
     const prompt = sc.ai_prompt || sc.scene_description;
 
     try {
-        const data = await postJson('/api/ai/generate-scene-image', {
+        let data = await postJson('/api/ai/generate-scene-image', {
             post_id: {{ post.id }},
             scene_id: sceneId,
             prompt: prompt,
             aspect_ratio: aspect
         });
+
+        // Fallback for running binary: if 404, call /api/studio/ai-image
+        if (!data.success && (data.error && (data.error.includes('Not Found') || data.error.includes('404')))) {
+            data = await postJson('/api/studio/ai-image', {
+                post_id: {{ post.id }},
+                prompt: prompt,
+                aspect: aspect
+            });
+            if (data.success && data.asset) {
+                const rel = data.asset.rel_path || data.asset.path || (typeof data.asset === 'string' ? data.asset : '');
+                data.image_url = '/media/download?path=' + encodeURIComponent(rel);
+            }
+        }
+
         if (data.success && data.image_url) {
             btn.innerHTML = '✓ Đã tạo ảnh';
             btn.className = 'px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-[10px]';
@@ -1191,11 +1254,23 @@ async function generateAllSceneImages() {
     const aspect = document.getElementById('ai-aspect-ratio')?.value || '9:16';
 
     try {
-        const data = await postJson('/api/ai/generate-all-scenes', {
+        let data = await postJson('/api/ai/generate-all-scenes', {
             post_id: {{ post.id }},
             scenes: currentScenesList,
             aspect_ratio: aspect
         });
+
+        // Fallback for running binary: if 404, draw scenes sequentially
+        if (!data.success && (data.error && (data.error.includes('Not Found') || data.error.includes('404')))) {
+            let genCount = 0;
+            for (const sc of currentScenesList) {
+                await generateSingleSceneImage(sc.scene_id);
+                genCount++;
+            }
+            alert(`✓ Đã hoàn tất vẽ ${genCount} ảnh minh hoạ cho kịch bản!`);
+            return;
+        }
+
         if (data.success && data.generated) {
             for (const item of data.generated) {
                 const preview = document.getElementById(`scene-img-preview-${item.scene_id}`);
@@ -1242,31 +1317,44 @@ async function downloadFromSource(itemId, btn) {
 }
 
 // 1. Tải media gốc từ bài viết
-async function fetchOriginalMedia() {
-    const btn = document.getElementById('btn-fetch-media');
+async function fetchOriginalMedia(triggerBtn) {
+    const btn = triggerBtn || document.getElementById('btn-fetch-media');
     const statusBox = document.getElementById('fetch-media-status');
 
-    btn.disabled = true;
-    const originalBtnHtml = btn.innerHTML;
-    btn.innerHTML = '<span>⏳ Đang tải media gốc...</span>';
-    statusBox.innerHTML = '<span class="text-blue-700 animate-pulse">⏳ Đang phân tích link nguồn và tải video/ảnh về máy chủ...</span>';
+    if (btn) {
+        btn.disabled = true;
+        btn.dataset.oldHtml = btn.innerHTML;
+        btn.innerHTML = '<span>⏳ Đang tải media gốc...</span>';
+    }
+    if (statusBox) {
+        statusBox.innerHTML = '<span class="text-blue-700 animate-pulse">⏳ Đang phân tích link nguồn và tải video/ảnh về máy chủ...</span>';
+    }
 
     try {
         const data = await postJson('/api/fetch-original-media', { post_id: {{ post.id }} });
         if (data.success && data.media_count > 0) {
-            const filesListHtml = data.files.map(f => `<li class="font-mono text-[10px] truncate"><a class="text-blue-700 hover:underline" href="${mediaUrl(f, true)}">⬇️ ${esc(f)}</a></li>`).join('');
-            statusBox.innerHTML = `
-                <div class="text-emerald-700 font-bold mb-1">✓ Đã tải thành công ${esc(data.media_count)} tệp media gốc!</div>
-                <ul class="space-y-0.5 mt-1 max-h-24 overflow-y-auto custom-scroll">${filesListHtml}</ul>
-            `;
+            if (statusBox) {
+                const filesListHtml = data.files.map(f => `<li class="font-mono text-[10px] truncate"><a class="text-blue-700 hover:underline" href="${mediaUrl(f, true)}">⬇️ ${esc(f)}</a></li>`).join('');
+                statusBox.innerHTML = `
+                    <div class="text-emerald-700 font-bold mb-1">✓ Đã tải thành công ${esc(data.media_count)} tệp media gốc!</div>
+                    <ul class="space-y-0.5 mt-1 max-h-24 overflow-y-auto custom-scroll">${filesListHtml}</ul>
+                `;
+            }
+            alert(`✓ Đã tải thành công ${data.media_count} tệp media gốc!`);
+            location.reload();
         } else {
-            statusBox.innerHTML = `<span class="text-amber-700">⚠️ ${esc(data.message || data.error || 'Không tìm thấy video/ảnh nào từ URL này hoặc trang chặn tải.')}</span>`;
+            const msg = data.message || data.error || 'Không tìm thấy video/ảnh nào từ URL này hoặc trang chặn tải.';
+            if (statusBox) statusBox.innerHTML = `<span class="text-amber-700">⚠️ ${esc(msg)}</span>`;
+            alert('⚠️ ' + msg);
         }
     } catch (e) {
-        statusBox.innerHTML = `<span class="text-rose-700">✗ Lỗi tải media: ${esc(e)}</span>`;
+        if (statusBox) statusBox.innerHTML = `<span class="text-rose-700">✗ Lỗi tải media: ${esc(e)}</span>`;
+        alert('✗ Lỗi tải media: ' + e);
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalBtnHtml;
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = btn.dataset.oldHtml || '⬇️ Tải từ nguồn về server';
+        }
     }
 }
 
@@ -1304,14 +1392,17 @@ function showVideoResult(data) {
 
 // 2. Dựng video 9:16
 async function remixNewsVideo() {
-    const btn = document.getElementById('btn-remix-video');
-    btn.disabled = true;
-    btn.classList.add('opacity-50', 'cursor-not-allowed');
-    const originalBtnHtml = btn.innerHTML;
-    btn.innerHTML = '<span>⚙️ Đang dựng video 9:16 + lồng tiếng AI...</span>';
+    const btn = document.getElementById('btn-remix-video') || document.getElementById('btn-full-auto');
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+    const originalBtnHtml = btn ? btn.innerHTML : '';
+    if (btn) btn.innerHTML = '<span>⚙️ Đang dựng video 9:16 + lồng tiếng AI...</span>';
+    const lang = document.getElementById('video-lang')?.value || document.getElementById('ai-lang')?.value || 'vi';
 
     try {
-        const data = await postJson('/api/remix-video', { post_id: {{ post.id }}, language: document.getElementById('video-lang').value });
+        const data = await postJson('/api/remix-video', { post_id: {{ post.id }}, language: lang });
         if (data.success) {
             showVideoResult(data);
         } else {
@@ -1320,9 +1411,11 @@ async function remixNewsVideo() {
     } catch (e) {
         alert('Lỗi kết nối máy chủ: ' + e);
     } finally {
-        btn.disabled = false;
-        btn.classList.remove('opacity-50', 'cursor-not-allowed');
-        btn.innerHTML = originalBtnHtml;
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            btn.innerHTML = originalBtnHtml;
+        }
     }
 }
 
